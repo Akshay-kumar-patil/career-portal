@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{ full_name | default('Resume') }}</title>
+<style>
+    body {
+        font-family: 'Georgia', 'Times New Roman', serif;
+        color: #222;
+        line-height: 1.5;
+        font-size: 11pt;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 40px;
+    }
+    .header { text-align: center; margin-bottom: 20px; }
+    .header h1 { font-size: 22pt; margin-bottom: 5px; }
+    .contact-info { font-size: 10pt; color: #555; }
+    .section { margin-bottom: 16px; }
+    .section-title {
+        font-size: 12pt; font-weight: bold; text-transform: uppercase;
+        border-bottom: 2px solid #222; padding-bottom: 3px; margin-bottom: 8px;
+    }
+    .exp-header { display: flex; justify-content: space-between; }
+    .exp-title { font-weight: bold; }
+    .exp-dates { color: #666; font-style: italic; }
+    ul { padding-left: 18px; margin-top: 4px; }
+    li { margin-bottom: 2px; }
+</style>
+</head>
+<body>
+<div class="header">
+    <h1>{{ full_name | default('Your Name') }}</h1>
+    <div class="contact-info">
+        {% if contact %}{{ contact.values() | select | join(' | ') }}{% endif %}
+    </div>
+</div>
+{% if summary %}
+<div class="section"><div class="section-title">Summary</div><p>{{ summary }}</p></div>
+{% endif %}
+{% if experience %}
+<div class="section"><div class="section-title">Experience</div>
+    {% for exp in experience %}
+    <div style="margin-bottom:12px">
+        <div class="exp-header"><span class="exp-title">{{ exp.title }} — {{ exp.company }}</span><span class="exp-dates">{{ exp.dates }}</span></div>
+        {% if exp.bullets %}<ul>{% for b in exp.bullets %}<li>{{ b }}</li>{% endfor %}</ul>{% endif %}
+    </div>{% endfor %}
+</div>{% endif %}
+{% if education %}
+<div class="section"><div class="section-title">Education</div>
+    {% for edu in education %}
+    <div><strong>{{ edu.degree }}</strong> — {{ edu.school }} | {{ edu.dates }}</div>
+    {% endfor %}
+</div>{% endif %}
+{% if skills %}
+<div class="section"><div class="section-title">Skills</div>
+    {% if skills is mapping %}{% for cat, slist in skills.items() %}{% if slist %}<p><strong>{{ cat | replace('_',' ') | title }}:</strong> {{ slist | join(', ') }}</p>{% endif %}{% endfor %}{% endif %}
+</div>{% endif %}
+</body>
+</html>
