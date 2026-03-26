@@ -25,11 +25,38 @@ app = FastAPI(
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Root route
+@app.get("/")
+def root():
+    return {
+        "name": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "status": "running",
+        "docs": "/docs",
+        "health": "/health",
+        "endpoints": {
+            "auth": "/api/auth",
+            "resume": "/api/resume",
+            "analyzer": "/api/analyzer",
+            "cover_letter": "/api/cover-letter",
+            "applications": "/api/applications",
+            "referrals": "/api/referrals",
+            "interview": "/api/interview",
+            "skills": "/api/skills",
+            "analytics": "/api/analytics",
+            "email": "/api/email",
+            "github": "/api/github",
+            "extract": "/api/extract",
+            "ai_status": "/api/ai/status",
+        }
+    }
 
 
 # Startup event
