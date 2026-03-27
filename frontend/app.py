@@ -270,9 +270,26 @@ def main():
         "⚙️ Settings": "pages/14_⚙️_Settings.py",
     }
 
+    # Initialize current page in session state
+    if "current_page" not in st.session_state:
+        st.session_state["current_page"] = "🏠 Dashboard"
+
     # Using sidebar selectbox for navigation (works with single-page approach)
     with st.sidebar:
-        selected = st.selectbox("Navigate", list(pages.keys()), label_visibility="collapsed")
+        # Get the index of the current page safely
+        try:
+            current_index = list(pages.keys()).index(st.session_state["current_page"])
+        except ValueError:
+            current_index = 0
+            
+        selected = st.selectbox("Navigate", list(pages.keys()), index=current_index, label_visibility="collapsed")
+        
+        # If user changed selection via dropdown, update state and rerun
+        if selected != st.session_state["current_page"]:
+            st.session_state["current_page"] = selected
+            st.rerun()
+
+    selected = st.session_state["current_page"]
 
     # Import and run the selected page module
     page_funcs = {
@@ -334,18 +351,21 @@ def show_dashboard():
     st.markdown("### ⚡ Quick Actions")
     cols = st.columns(4)
     actions = [
-        ("📄", "Build Resume", "Generate an ATS-optimized resume"),
-        ("🔍", "Analyze Resume", "Get your ATS score"),
-        ("🎯", "Track Application", "Add a new job application"),
-        ("🎤", "Practice Interview", "Start a mock interview"),
+        ("📄", "Build Resume", "Generate an ATS-optimized resume", "📄 Resume Builder"),
+        ("🔍", "Analyze Resume", "Get your ATS score", "🔍 Resume Analyzer"),
+        ("🎯", "Track Application", "Add a new job application", "🎯 Job Tracker"),
+        ("🎤", "Practice Interview", "Start a mock interview", "🎤 Mock Interview"),
     ]
-    for i, (icon, title, desc) in enumerate(actions):
+    for i, (icon, title, desc, target) in enumerate(actions):
         with cols[i]:
-            st.markdown(f"""<div class="feature-card">
-                <div style="font-size:1.5rem">{icon}</div>
-                <div style="font-weight:600">{title}</div>
-                <div style="color:#8892B0; font-size:0.8rem">{desc}</div>
+            st.markdown(f"""<div class="feature-card" style="text-align: center; border-bottom: none; border-bottom-left-radius: 0; border-bottom-right-radius: 0; padding-bottom: 0.5rem;">
+                <div style="font-size:2rem; margin-bottom:0.5rem">{icon}</div>
+                <div style="font-weight:600; margin-bottom:0.3rem">{title}</div>
+                <div style="color:#8892B0; font-size:0.85rem; height: 3em;">{desc}</div>
             </div>""", unsafe_allow_html=True)
+            if st.button(f"Go to {title}", key=f"quick_action_{i}", use_container_width=True):
+                st.session_state["current_page"] = target
+                st.rerun()
 
     # AI Status Card
     st.markdown("---")

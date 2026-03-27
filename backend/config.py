@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     # AI Models - Gemini (primary)
     GEMINI_API_KEY: Optional[str] = None
-    GEMINI_MODEL: str = "gemini-2.0-flash"
+    GEMINI_MODEL: str = "gemini-1.5-flash"
 
     # AI Models - OpenAI (fallback)
     OPENAI_API_KEY: Optional[str] = None
