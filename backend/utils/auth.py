@@ -4,14 +4,18 @@ from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from backend.config import settings
 from backend.database import get_db
 from backend.models.user import User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+# FIX: Use HTTPBearer — OAuth2PasswordBearer expects form-encoded body
+# but our login endpoint accepts JSON. This mismatch broke Swagger auth
+# and any standard Bearer token client.
+http_bearer = HTTPBearer(auto_error=True)
 
 
 def hash_password(password: str) -> str:
@@ -40,9 +44,11 @@ def decode_token(token: str) -> dict:
         )
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
-    """FastAPI dependency to get the current authenticated user."""
-    payload = decode_token(token)
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
+    db: Session = Depends(get_db),
+) -> User:
+    payload = decode_token(credentials.credentials)
     user_id = payload.get("sub")
     if user_id is None:
         raise HTTPException(status_code=401, detail="Invalid token payload")
