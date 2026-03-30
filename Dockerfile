@@ -1,19 +1,29 @@
+# Dockerfile
 FROM python:3.11-slim
 
 WORKDIR /app
 
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+# Copy application code required for backend
+COPY backend/ ./backend/
+COPY templates/ ./templates/
+COPY main.py .
 
 # Create data directories
 RUN mkdir -p data/uploads data/generated data/chroma_db
 
-# Expose port
+# Expose port (default for uvicorn)
 EXPOSE 8000
 
-# Start FastAPI
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start FastAPI without reload for production
+# Using shell form to resolve the $PORT environment variable
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
