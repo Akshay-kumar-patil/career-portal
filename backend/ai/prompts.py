@@ -16,10 +16,10 @@ Given the following job description and user information, generate a professiona
 **Additional Context:**
 {additional_context}
 
-Generate a complete resume in the following JSON format:
+Generate a complete resume in the following JSON format. If specific fields like github or portfolio are missing, leave them empty or null.
 {{
     "full_name": "...",
-    "contact": {{"email": "...", "phone": "...", "linkedin": "...", "location": "..."}},
+    "contact": {{"email": "...", "phone": "...", "linkedin": "...", "github": "...", "portfolio": "...", "location": "..."}},
     "summary": "A 2-3 sentence professional summary tailored to the job",
     "experience": [
         {{
@@ -27,68 +27,79 @@ Generate a complete resume in the following JSON format:
             "company": "...",
             "location": "...",
             "dates": "...",
-            "bullets": ["Achievement-oriented bullet using metrics and action verbs", ...]
+            "bullets": ["Achievement-oriented bullet using metrics and action verbs"]
         }}
     ],
     "education": [
-        {{"degree": "...", "school": "...", "dates": "...", "gpa": "...", "highlights": [...]}}
+        {{"degree": "...", "school": "...", "location": "...", "dates": "...", "grade": "...", "highlights": []}}
     ],
     "skills": {{
-        "technical": ["..."],
-        "tools": ["..."],
-        "soft_skills": ["..."]
+        "Languages": ["..."],
+        "Library": ["..."],
+        "DataBase": ["..."],
+        "Tools/Platform/Automation Platform": ["..."]
     }},
     "projects": [
-        {{"name": "...", "description": "...", "technologies": ["..."], "link": "..."}}
+        {{"name": "...", "tech_stack": "...", "bullets": ["..."]}}
     ],
-    "certifications": ["..."]
+    "certifications": [
+        {{"name": "...", "issuer": "...", "date": "..."}}
+    ],
+    "achievements": ["..."]
 }}
 
-Important rules:
-1. Use strong action verbs (Led, Developed, Implemented, Optimized, etc.)
+Rules:
+1. Use strong action verbs (Led, Developed, Implemented, Optimized)
 2. Include quantifiable metrics wherever possible
 3. Match keywords from the job description naturally
 4. Keep bullet points concise (1-2 lines each)
-5. Prioritize most relevant experience
-6. Return ONLY the JSON, no other text
+5. Return ONLY the JSON, no other text
 """
 
-RESUME_ANALYSIS_PROMPT = """You are an expert ATS (Applicant Tracking System) analyzer and career coach.
+# ROOT FIX: Prompt rewritten to produce SHORT, bounded output.
+# The previous prompt had no length constraints, so Gemini would write
+# paragraph-length feedback strings that pushed the response over the
+# max_output_tokens limit and truncated mid-JSON.
+# Solution: strict per-field word/item limits so total output stays well
+# under 4096 tokens even for a detailed resume.
+RESUME_ANALYSIS_PROMPT = """You are an expert ATS analyzer and career coach.
 
-Analyze the following resume and provide a detailed assessment.
+Analyze the resume below and return ONLY a valid JSON object — no markdown, no explanation.
 
 **Resume:**
 {resume_text}
 
-**Target Job Description (if provided):**
+**Target Job Description:**
 {job_description}
 
-Provide your analysis in the following JSON format:
+STRICT RULES — failure to follow will break the parser:
+- Return ONLY valid JSON. No text before or after.
+- Every string value: MAX 20 words.
+- Every array: MAX 3 items.
+- Do NOT truncate — if you are running out of space, shorten values further.
+- Close ALL brackets and quotes.
+
+Required JSON structure (fill every field, use empty array [] if nothing to add):
 {{
-    "ats_score": 0-100,
+    "ats_score": <integer 0-100>,
+    "overall_feedback": "<max 20 words>",
+    "strengths": ["<max 10 words>", "<max 10 words>", "<max 10 words>"],
+    "formatting_issues": ["<max 10 words>"],
     "section_feedback": [
         {{
-            "section": "summary/experience/education/skills/etc",
-            "score": 0-100,
-            "feedback": "Detailed feedback",
-            "suggestions": ["Specific improvement suggestion"]
+            "section": "<name>",
+            "score": <integer 0-100>,
+            "feedback": "<max 15 words>",
+            "suggestions": ["<max 10 words>"]
         }}
     ],
     "keyword_analysis": {{
-        "present_keywords": ["keywords found"],
-        "missing_keywords": ["keywords that should be added"],
-        "keyword_density_score": 0-100
+        "present_keywords": ["keyword1", "keyword2", "keyword3"],
+        "missing_keywords": ["keyword1", "keyword2", "keyword3"],
+        "keyword_density_score": <integer 0-100>
     }},
-    "improvement_suggestions": [
-        "Specific, actionable suggestion 1",
-        "Specific, actionable suggestion 2"
-    ],
-    "overall_feedback": "2-3 sentence overall assessment",
-    "formatting_issues": ["Any formatting concerns"],
-    "strengths": ["Key strengths of the resume"]
+    "improvement_suggestions": ["<max 15 words>", "<max 15 words>", "<max 15 words>"]
 }}
-
-Be specific, actionable, and constructive. Return ONLY the JSON.
 """
 
 COVER_LETTER_PROMPT = """You are an expert cover letter writer.
@@ -120,7 +131,7 @@ Tone guide:
 Return ONLY the cover letter text, properly formatted with paragraphs.
 """
 
-RECRUITER_SIM_PROMPT = """You are a senior technical recruiter at a top company reviewing applications.
+RECRUITER_SIM_PROMPT = """You are a senior technical recruiter reviewing an application.
 
 **Resume:**
 {resume_text}
@@ -128,71 +139,57 @@ RECRUITER_SIM_PROMPT = """You are a senior technical recruiter at a top company 
 **Job Description:**
 {job_description}
 
-Evaluate this candidate as a real recruiter would. Provide your assessment in JSON:
+Return ONLY valid JSON, no other text:
 {{
     "decision": "shortlisted" or "rejected",
-    "confidence": 0.0-1.0,
-    "reasoning": [
-        "Reason 1 for the decision",
-        "Reason 2..."
-    ],
-    "strengths": ["Candidate strength 1", ...],
-    "weaknesses": ["Candidate weakness 1", ...],
-    "suggestions": ["What would make this candidate stronger", ...],
-    "comparison_notes": "How this candidate compares to the ideal profile"
+    "confidence": <float 0.0-1.0>,
+    "reasoning": ["<reason 1>", "<reason 2>"],
+    "strengths": ["<strength 1>", "<strength 2>"],
+    "weaknesses": ["<weakness 1>", "<weakness 2>"],
+    "suggestions": ["<suggestion 1>", "<suggestion 2>"],
+    "comparison_notes": "<max 20 words>"
 }}
-
-Be realistic and honest. Consider ATS compatibility, relevance, experience level match, and presentation quality. Return ONLY the JSON.
 """
 
 INTERVIEW_QUESTION_PROMPT = """You are an expert interviewer for the role of {role} at {company}.
 
 Generate {num_questions} interview questions for a {difficulty} difficulty {interview_type} interview.
 
-Interview types:
-- hr: Behavioral, situational, culture-fit questions
-- technical: Technical knowledge, system design, problem-solving
-- mixed: Combination of both
-
-Provide questions in JSON format:
+Return ONLY valid JSON:
 {{
     "questions": [
         {{
             "id": 1,
             "question": "The interview question",
-            "type": "hr" or "technical",
+            "type": "hr or technical",
             "difficulty": "easy/medium/hard",
             "category": "behavioral/technical/situational/system_design",
-            "tips": "Brief tip for answering well",
-            "expected_duration_minutes": 3-10
+            "tips": "Brief tip under 10 words",
+            "expected_duration_minutes": 5
         }}
     ]
 }}
-
-Make questions realistic and role-specific. Return ONLY the JSON.
 """
 
 INTERVIEW_EVAL_PROMPT = """You are an expert interviewer evaluating a candidate's answer.
 
 **Question:** {question}
-**Candidate's Answer:** {answer}
+**Answer:** {answer}
 **Role:** {role}
 
-Evaluate the answer in JSON format:
+Return ONLY valid JSON:
 {{
-    "score": 0-10,
-    "feedback": "Detailed constructive feedback",
-    "strengths": ["What the candidate did well"],
-    "improvements": ["What could be improved"],
-    "sample_answer": "A strong sample answer for reference"
+    "score": <integer 0-10>,
+    "feedback": "<max 30 words>",
+    "strengths": ["<max 10 words>", "<max 10 words>"],
+    "improvements": ["<max 10 words>", "<max 10 words>"],
+    "sample_answer": "<max 50 words>"
 }}
-
-Be constructive and specific. Return ONLY the JSON.
 """
 
 SKILL_GAP_PROMPT = """You are a career development advisor.
 
-Compare the user's skills against the job requirements and provide a skill gap analysis.
+Compare the user's skills against the job requirements.
 
 **Job Description:**
 {job_description}
@@ -200,36 +197,32 @@ Compare the user's skills against the job requirements and provide a skill gap a
 **User's Current Skills:**
 {user_skills}
 
-Provide analysis in JSON format:
+Return ONLY valid JSON:
 {{
     "missing_skills": [
         {{
-            "skill": "Skill name",
+            "skill": "<skill name>",
             "importance": "critical/important/nice_to_have",
-            "estimated_learning_time": "2 weeks / 1 month / 3 months",
-            "resources": ["Course or resource suggestion"]
+            "estimated_learning_time": "<e.g. 2 weeks>",
+            "resources": ["<platform/course name>"]
         }}
     ],
-    "matched_skills": ["Skills the user already has"],
-    "skill_score": 0-100,
+    "matched_skills": ["<skill>", "<skill>"],
+    "skill_score": <integer 0-100>,
     "learning_roadmap": [
         {{
             "phase": 1,
-            "title": "Phase title",
-            "duration": "2 weeks",
-            "skills": ["Skills to learn"],
-            "resources": ["Specific courses/tutorials"]
+            "title": "<phase title>",
+            "duration": "<e.g. 2 weeks>",
+            "skills": ["<skill>"],
+            "resources": ["<resource>"]
         }}
     ],
-    "suggested_projects": [
-        "Project idea that demonstrates the missing skills"
-    ]
+    "suggested_projects": ["<project idea under 15 words>"]
 }}
-
-Be specific with learning resources (recommend real platforms like Coursera, Udemy, freeCodeCamp, etc.). Return ONLY the JSON.
 """
 
-EMAIL_GENERATION_PROMPT = """You are an expert at writing professional emails for job seekers.
+EMAIL_GENERATION_PROMPT = """You are an expert at writing professional job search emails.
 
 **Email Type:** {email_type}
 **Recipient:** {recipient_name}
@@ -238,24 +231,13 @@ EMAIL_GENERATION_PROMPT = """You are an expert at writing professional emails fo
 **Context:** {context}
 **Tone:** {tone}
 
-Email type descriptions:
-- cold_email: Reaching out to someone you don't know at the company
-- referral_request: Asking someone you know (or loosely know) for a referral
-- follow_up: Following up after an application or interview
-- thank_you: Thank you email after an interview
-
-Provide the email in JSON format:
+Return ONLY valid JSON:
 {{
-    "subject": "Email subject line",
-    "body": "Full email body with proper formatting"
+    "subject": "<email subject line>",
+    "body": "<full email body>"
 }}
 
-Rules:
-1. Keep it concise (under 200 words for cold emails)
-2. Be respectful of the recipient's time
-3. Include a clear ask or purpose
-4. Sound human, not robotic
-5. Return ONLY the JSON
+Rules: concise (under 200 words for cold emails), respectful, clear ask, human tone.
 """
 
 GITHUB_ANALYSIS_PROMPT = """You are a technical resume writer analyzing GitHub projects.
@@ -263,30 +245,21 @@ GITHUB_ANALYSIS_PROMPT = """You are a technical resume writer analyzing GitHub p
 **GitHub Repositories:**
 {repos_data}
 
-For each significant repository, generate resume-ready bullet points that:
-1. Start with a strong action verb
-2. Describe what was built and why
-3. Mention technologies used
-4. Include impact/metrics where possible
-
-Provide analysis in JSON format:
+Return ONLY valid JSON:
 {{
     "resume_points": [
-        "Built a [project type] using [technologies] that [achievement/impact]",
-        ...
+        "Built a [project type] using [technologies] that [achievement/impact]"
     ],
-    "tech_stack": ["Technology 1", "Technology 2", ...],
+    "tech_stack": ["Technology 1", "Technology 2"],
     "project_highlights": [
         {{
-            "repo_name": "...",
-            "description": "Enhanced description",
-            "technologies": ["..."],
-            "suggested_bullet": "Resume-ready bullet point"
+            "repo_name": "<name>",
+            "description": "<max 20 words>",
+            "technologies": ["<tech>"],
+            "suggested_bullet": "<resume bullet under 20 words>"
         }}
     ]
 }}
-
-Focus on the most impressive and relevant projects. Return ONLY the JSON.
 """
 
 JD_EXTRACTION_PROMPT = """You are an expert at parsing job descriptions.
@@ -294,22 +267,20 @@ JD_EXTRACTION_PROMPT = """You are an expert at parsing job descriptions.
 **Job Description Text:**
 {jd_text}
 
-Extract structured information in JSON format:
+Return ONLY valid JSON:
 {{
-    "company": "Company name if mentioned",
-    "role": "Job title",
-    "skills": ["Required skill 1", "Required skill 2", ...],
-    "responsibilities": ["Key responsibility 1", ...],
-    "requirements": ["Requirement 1", ...],
-    "tools": ["Tool/technology 1", ...],
-    "experience_required": "e.g., 3-5 years",
-    "education_required": "e.g., Bachelor's in CS",
-    "nice_to_haves": ["Nice to have 1", ...],
-    "benefits": ["Benefit 1", ...],
-    "salary_range": "if mentioned",
-    "location": "if mentioned",
-    "job_type": "remote/hybrid/onsite if mentioned"
+    "company": "<company name or null>",
+    "role": "<job title>",
+    "skills": ["<skill>"],
+    "responsibilities": ["<responsibility>"],
+    "requirements": ["<requirement>"],
+    "tools": ["<tool>"],
+    "experience_required": "<e.g. 3-5 years or null>",
+    "education_required": "<e.g. Bachelor's in CS or null>",
+    "nice_to_haves": ["<nice to have>"],
+    "benefits": ["<benefit>"],
+    "salary_range": "<if mentioned or null>",
+    "location": "<if mentioned or null>",
+    "job_type": "<remote/hybrid/onsite or null>"
 }}
-
-Extract everything available. Return ONLY the JSON.
 """
