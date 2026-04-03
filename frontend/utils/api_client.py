@@ -6,7 +6,7 @@ import requests
 import streamlit as st
 from typing import Optional
 
-BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
+BASE_URL = os.environ.get("API_BASE_URL", "https://career-portal-m5re.onrender.com")
 
 # FIX #9: Define standard timeouts as constants so they're consistent everywhere
 _TIMEOUT_SHORT = 10    # for simple read/write operations
@@ -47,6 +47,8 @@ def register(email: str, password: str, full_name: str) -> Optional[dict]:
         timeout=_TIMEOUT_SHORT,
     )
     return _handle_response(resp)
+
+
 
 
 def login(email: str, password: str) -> Optional[dict]:
@@ -99,6 +101,15 @@ def generate_resume(
     )
     return _handle_response(resp)
 
+def preview_resume(resume_id: int) -> str:
+    resp = requests.get(
+        f"{BASE_URL}/api/resume/{resume_id}/preview",
+        headers=_headers(),
+        timeout=20
+    )
+    if resp.status_code == 200:
+        return resp.text
+    return ""
 
 def list_resumes() -> Optional[list]:
     resp = requests.get(f"{BASE_URL}/api/resume/list", headers=_headers(), timeout=_TIMEOUT_SHORT)
