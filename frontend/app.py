@@ -546,12 +546,25 @@ def show_resume_builder():
                         "achievements": achievs,
                     }
 
-                    with st.spinner("🧠 AI Agent is analyzing your data and building your resume..."):
-                        result = api.generate_resume(
-                            jd or "",
-                            existing_resume=json.dumps(resume_data, indent=2),
-                            additional_context=context,
-                        )
+                    with st.spinner("🧠 AI Agent is analyzing your data and building your resume... (this may take 2-3 minutes)"):
+                        try:
+                            result = api.generate_resume(
+                                jd or "",
+                                existing_resume=json.dumps(resume_data, indent=2),
+                                additional_context=context,
+                            )
+                        except requests.exceptions.ReadTimeout:
+                            st.error(
+                                "⏱️ **Request timed out.** The AI is taking longer than expected "
+                                "(possibly due to a Render cold start). Please wait 30 seconds and try again."
+                            )
+                            result = None
+                        except requests.exceptions.ConnectionError:
+                            st.error(
+                                "🔌 **Connection error.** Could not reach the backend server. "
+                                "Please check your internet connection and try again."
+                            )
+                            result = None
                         if result:
                             st.session_state["last_resume"] = result
                             # Clear cached PDF/DOCX when a new resume is generated
