@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
     logger.info(
         f"AI Status: Internet={status['internet_available']}, "
         f"Gemini={'✓' if status.get('gemini_configured') else '✗'}, "
-        f"Ollama={status['ollama_available']}, "
+        f"Groq={'✓' if status.get('groq_configured') else '✗'} ({status.get('groq_model', 'llama-3.3-70b-versatile')}), "
         f"OpenAI={'✓' if status['openai_configured'] else '✗'}"
     )
     yield
