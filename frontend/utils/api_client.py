@@ -7,8 +7,8 @@ import streamlit as st
 from typing import Optional
 from dotenv import load_dotenv
 
-# Load .env file from the root directory
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"))
+# Load .env file from the root directory with override so local .env takes precedence
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"), override=True)
 
 BASE_URL = os.environ.get("API_BASE_URL", "https://career-portal-m5re.onrender.com")
 
