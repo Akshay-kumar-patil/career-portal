@@ -4,7 +4,7 @@ Uses LCEL (LangChain Expression Language) for composable pipelines.
 
 Quota handling strategy:
 - Try primary provider (Gemini by default)
-- If 429 / RESOURCE_EXHAUSTED → mark router quota flag → immediately try Ollama
+- If 429 / RESOURCE_EXHAUSTED → mark router quota flag → immediately try Groq (llama-3.3-70b-versatile)
 - No retries — one attempt per provider, fail fast and fall through
 """
 import logging
@@ -30,11 +30,11 @@ def _invoke(
     max_tokens: int = 8192,
 ) -> str:
     """
-    Core invoke function — single attempt with clean Ollama fallback on quota error.
+    Core invoke function — single attempt with clean Groq fallback on quota error.
 
     Flow:
       1. Try primary provider (e.g. Gemini)
-      2. If quota error → mark exhausted on router → try Ollama once
+      2. If quota error → mark exhausted on router → try Groq once
       3. Any other error → raise immediately (no silent swallowing)
 
     Returns cleaned raw string from the LLM.
@@ -53,7 +53,7 @@ def _invoke(
 
     except Exception as primary_err:
         if is_quota_error(primary_err):
-            # Gemini quota hit — mark it and fall through to Ollama
+            # Gemini quota hit — mark it and fall through to Groq
             logger.warning(f"Gemini quota/rate-limit error: {primary_err}")
             model_router.mark_gemini_quota_exhausted()
         else:
@@ -61,19 +61,19 @@ def _invoke(
             logger.error(f"Primary LLM call failed (non-quota): {primary_err}")
             raise
 
-    # Ollama fallback — only reached after a quota error
-    logger.info("Falling back to Ollama after Gemini quota exhaustion...")
+    # Groq fallback — only reached after a quota error
+    logger.info("Falling back to Groq (llama-3.3-70b-versatile) after Gemini quota exhaustion...")
     try:
-        ollama_llm = model_router.get_llm(provider="ollama", temperature=temperature, max_tokens=max_tokens)
-        chain = prompt | ollama_llm | StrOutputParser()
+        groq_llm = model_router.get_llm(provider="groq", temperature=temperature, max_tokens=max_tokens)
+        chain = prompt | groq_llm | StrOutputParser()
         raw = chain.invoke(inputs)
-        logger.info(f"Ollama fallback succeeded. Response length: {len(raw)}")
+        logger.info(f"Groq fallback succeeded. Response length: {len(raw)}")
         return clean_ai_response(raw)
-    except Exception as ollama_err:
-        logger.error(f"Ollama fallback also failed: {ollama_err}")
+    except Exception as groq_err:
+        logger.error(f"Groq fallback also failed: {groq_err}")
         raise RuntimeError(
-            f"Both primary provider and Ollama fallback failed. "
-            f"Ollama error: {ollama_err}"
+            f"Both primary provider and Groq fallback failed. "
+            f"Groq error: {groq_err}"
         )
 
 
