@@ -108,8 +108,10 @@ _PAGES = [
 
 
 def _navigate(page: str):
-    """Navigate to a page — single function to keep nav state consistent."""
-    st.session_state["nav_selectbox"] = page
+    """Navigate to a page — directly sets session state before rerun."""
+    if page in _PAGES:
+        st.session_state["nav_selectbox"] = page
+        st.session_state["_nav_target"] = page
 
 
 def show_auth_page():
@@ -192,18 +194,21 @@ def show_sidebar():
         if ai_status:
             gemini = ai_status.get("gemini_configured", False)
             online = ai_status.get("internet_available", False)
-            ollama = ai_status.get("ollama_available", False)
+            groq_ok = ai_status.get("groq_configured", False)
+            groq_avail = ai_status.get("groq_available", False)
             if gemini and online:
                 status_text = "🟢 Gemini Online"
+            elif groq_avail:
+                status_text = "🟢 Groq Online (Llama 3.3)"
             elif online:
                 status_text = "🟢 Online"
-            elif ollama:
-                status_text = "🟡 Offline (Ollama)"
             else:
                 status_text = "🔴 No AI"
             st.markdown(f"**AI Status:** {status_text}")
             if gemini:
                 st.caption(f"Model: {ai_status.get('gemini_model', 'gemini-2.5-flash')}")
+            elif groq_ok:
+                st.caption(f"Fallback: {ai_status.get('groq_model', 'llama-3.3-70b-versatile')}")
             if ai_status.get("estimated_cost_usd", 0) > 0:
                 st.caption(f"Cost: ${ai_status['estimated_cost_usd']:.4f}")
 
@@ -230,9 +235,14 @@ def main():
 
     show_sidebar()
 
-    # FIX #12: Read navigation from single source of truth
+    # Ensure nav is initialized
     if "nav_selectbox" not in st.session_state:
         st.session_state["nav_selectbox"] = "🏠 Dashboard"
+    # Apply any pending navigation target (from quick actions, etc.)
+    if "_nav_target" in st.session_state:
+        target = st.session_state.pop("_nav_target")
+        if target in _PAGES:
+            st.session_state["nav_selectbox"] = target
 
     selected = st.session_state["nav_selectbox"]
 
@@ -304,7 +314,6 @@ def show_dashboard():
                 <div style="font-weight:600; margin-bottom:0.3rem">{title}</div>
                 <div style="color:#8892B0; font-size:0.85rem; height:3em;">{desc}</div>
             </div>""", unsafe_allow_html=True)
-            # FIX #12: Use _navigate helper
             if st.button(f"Go to {title}", key=f"quick_action_{i}", use_container_width=True):
                 _navigate(target)
                 st.rerun()
@@ -323,9 +332,10 @@ def show_dashboard():
             st.markdown(f"**Gemini:** {'🟢 Configured' if gemini_ok else '⚪ Not set'}")
             st.markdown(f"**Model:** {ai_status.get('gemini_model', 'N/A')}")
         with c3:
-            ollama = ai_status.get("ollama_available", False)
-            st.markdown(f"**Ollama:** {'🟢 Running' if ollama else '⚪ Not detected'}")
-            st.markdown(f"**OpenAI:** {'🟢 Configured' if ai_status.get('openai_configured') else '⚪ Not set'}")
+            groq_ok = ai_status.get("groq_configured", False)
+            groq_avail = ai_status.get("groq_available", False)
+            st.markdown(f"**Groq:** {'🟢 Ready' if groq_avail else ('🟡 Key set' if groq_ok else '⚪ Not set')}")
+            st.markdown(f"**Model:** {ai_status.get('groq_model', 'llama-3.3-70b-versatile')}")
         with c4:
             st.markdown(f"**Cost:** ${ai_status.get('estimated_cost_usd', 0):.4f}")
             st.markdown(f"**Tokens:** {ai_status.get('tokens_used', 0):,}")
