@@ -13,20 +13,20 @@ class AnalyzerService:
         """
         Full AI-powered resume analysis with ATS scoring.
 
-        - Calls analyze_resume chain (Gemini → auto-falls to Ollama on quota error)
+        - Calls analyze_resume chain (Gemini → auto-falls to Groq on quota error)
         - Validates and sanitizes the response
         - Always appends fast keyword match if JD provided
         - Returns which AI model was actually used
         """
         # Record which provider was active before the call
         # so we can tell the frontend which model ran the analysis
-        provider_before = "ollama" if model_router._gemini_quota_exhausted else "gemini"
+        provider_before = "groq" if model_router._gemini_quota_exhausted else "gemini"
 
         raw_analysis = analyze_resume_chain(resume_text, job_description)
 
         # Detect which provider was used after the call
         # (quota flag may have been set during the call)
-        provider_used = "ollama" if model_router._gemini_quota_exhausted else provider_before
+        provider_used = "groq" if model_router._gemini_quota_exhausted else provider_before
 
         default_fallback = {
             "ats_score": 0,
