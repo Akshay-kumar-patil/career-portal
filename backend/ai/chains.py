@@ -154,9 +154,9 @@ def generate_cover_letter(
     additional_context: str = "",
     user_profile: str = "",
     provider: Optional[str] = None,
-) -> str:
-    """Returns plain text (not JSON)."""
-    return _invoke(
+) -> dict:
+    """Returns structured JSON data representing the cover letter."""
+    return _invoke_json(
         COVER_LETTER_PROMPT,
         {
             "company_name": company_name, "role": role,
