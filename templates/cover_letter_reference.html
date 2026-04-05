@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Cover Letter</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap');
+    
+    body { 
+        font-family: 'Merriweather', 'Times New Roman', serif; 
+        font-size: 11pt; 
+        line-height: 1.6; 
+        max-width: 800px; 
+        margin: 0 auto; 
+        padding: 40px 40px; 
+        color: #333; 
+    }
+    
+    .header {
+        text-align: center;
+        margin-bottom: 25px;
+    }
+    
+    .header h1 {
+        font-size: 28pt;
+        font-weight: 400;
+        margin: 0 0 10px 0;
+        color: #222;
+        letter-spacing: 1px;
+    }
+    
+    .contact-info {
+        font-size: 10pt;
+        color: #444;
+        margin-bottom: 5px;
+    }
+    
+    .contact-divider {
+        margin: 0 10px;
+    }
+    
+    .header-border {
+        border-bottom: 1px dashed #aaa;
+        margin-top: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .date { 
+        margin-bottom: 20px; 
+    }
+    
+    .recipient-info {
+        margin-bottom: 20px;
+        line-height: 1.5;
+    }
+    
+    .salutation {
+        margin-bottom: 15px;
+    }
+    
+    .body-paragraph { 
+        margin-bottom: 15px; 
+        text-align: justify;
+    }
+    
+    .signature { 
+        margin-top: 30px; 
+    }
+    
+    .signature p {
+        margin: 0;
+        line-height: 1.5;
+    }
+    
+    .signature-name {
+        margin-top: 25px;
+    }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>{{ user_name | default('Your Name') }}</h1>
+    <div class="contact-info">
+        {{ user_location | default('City, ST 12345') }}
+    </div>
+    <div class="contact-info">
+        {{ user_phone | default('(555) 555-5555') }} <span class="contact-divider">&nbsp;&nbsp;&nbsp;&nbsp;</span> {{ user_email | default('email@example.com') }}
+    </div>
+</div>
+
+<div class="header-border"></div>
+
+<div class="date">{{ current_date }}</div>
+
+<div class="recipient-info">
+    {% if recipient_name %}<div>{{ recipient_name }}{% if recipient_title %}, {{ recipient_title }}{% endif %}</div>{% endif %}
+    {% if company_name %}<div>{{ company_name }}</div>{% endif %}
+    {% if company_address %}<div>{{ company_address }}</div>{% endif %}
+    {% if company_phone %}<div>{{ company_phone }}</div>{% endif %}
+    {% if company_email %}<div>{{ company_email }}</div>{% endif %}
+</div>
+
+<div class="salutation">
+    {{ salutation | default('Dear Hiring Manager,') }}
+</div>
+
+{% for paragraph in body_paragraphs %}
+<div class="body-paragraph">
+    {{ paragraph }}
+</div>
+{% endfor %}
+
+<div class="signature">
+    <p>{{ sign_off | default('Best regards,') }}</p>
+    <div class="signature-name">{{ user_name | default('Your Name') }}</div>
+</div>
+
+</body>
+</html>
