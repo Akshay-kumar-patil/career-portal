@@ -108,9 +108,8 @@ _PAGES = [
 
 
 def _navigate(page: str):
-    """Navigate to a page — directly sets session state before rerun."""
+    """Navigate to a page via session state to be processed before the next run."""
     if page in _PAGES:
-        st.session_state["nav_selectbox"] = page
         st.session_state["_nav_target"] = page
 
 
@@ -233,8 +232,6 @@ def main():
         show_auth_page()
         return
 
-    show_sidebar()
-
     # Ensure nav is initialized
     if "nav_selectbox" not in st.session_state:
         st.session_state["nav_selectbox"] = "🏠 Dashboard"
@@ -243,6 +240,8 @@ def main():
         target = st.session_state.pop("_nav_target")
         if target in _PAGES:
             st.session_state["nav_selectbox"] = target
+
+    show_sidebar()
 
     selected = st.session_state["nav_selectbox"]
 
