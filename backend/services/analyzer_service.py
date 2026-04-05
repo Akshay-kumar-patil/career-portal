@@ -1,6 +1,7 @@
 """Resume analyzer service."""
 import logging
 from backend.ai.chains import analyze_resume as analyze_resume_chain
+from backend.ai.chains import simulate_recruiter as simulate_recruiter_chain
 from backend.ai.model_router import model_router
 from backend.utils.helpers import calculate_keyword_match
 
@@ -94,6 +95,35 @@ class AnalyzerService:
                 }
 
         return analysis
+
+    def simulate_recruiter(self, resume_text: str, job_description: str) -> dict:
+        """
+        Simulate a recruiter reviewing a resume against a JD.
+        Returns a structured decision with reasoning, strengths, and weaknesses.
+        """
+        provider_before = "groq" if model_router._gemini_quota_exhausted else "gemini"
+        
+        result = simulate_recruiter_chain(resume_text, job_description)
+        
+        provider_used = "groq" if model_router._gemini_quota_exhausted else provider_before
+        
+        default_fallback = {
+            "decision": "rejected",
+            "confidence": 0.0,
+            "reasoning": ["Simulation failed to produce a valid recruiter response."],
+            "strengths": [],
+            "weaknesses": [],
+            "suggestions": [],
+            "comparison_notes": "",
+            "model_used": provider_used
+        }
+        
+        if not isinstance(result, dict) or "error" in result:
+            logger.warning(f"Recruiter simulation failed: {result.get('error') if isinstance(result, dict) else 'non-dict response'}")
+            return default_fallback
+            
+        result["model_used"] = provider_used
+        return result
 
     def quick_score(self, resume_text: str, job_description: str) -> dict:
         """Fast keyword-based scoring — no AI call, instant response."""

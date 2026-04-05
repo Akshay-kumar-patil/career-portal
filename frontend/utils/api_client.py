@@ -145,6 +145,15 @@ def download_resume(resume_id: int, fmt: str) -> Optional[bytes]:
     return None
 
 
+def delete_resume(resume_id: int) -> bool:
+    resp = requests.delete(
+        f"{BASE_URL}/api/resume/{resume_id}",
+        headers=_headers(),
+        timeout=_TIMEOUT_SHORT,
+    )
+    return resp.status_code == 200
+
+
 # --- Analyzer ---
 def analyze_resume(resume_text: str, job_description: str = "") -> Optional[dict]:
     resp = requests.post(
@@ -336,7 +345,7 @@ def analyze_github(username: str, max_repos: int = 10) -> Optional[dict]:
 def simulate_recruiter(resume_text: str, job_description: str) -> Optional[dict]:
     # FIX #3: Dedicated function for the correct recruiter endpoint
     resp = requests.post(
-        f"{BASE_URL}/api/analyzer/analyze",
+        f"{BASE_URL}/api/analyzer/simulate",
         json={"resume_text": resume_text, "job_description": job_description},
         headers=_headers(),
         timeout=_TIMEOUT_AI,

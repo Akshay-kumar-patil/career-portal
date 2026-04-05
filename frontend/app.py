@@ -227,6 +227,18 @@ def show_sidebar():
             st.rerun()
 
 
+def delete_resume_local(resume_id: int):
+    """Local fallback to bypass module caching issues."""
+    import requests
+    from frontend.utils.api_client import BASE_URL, _headers
+    resp = requests.delete(
+        f"{BASE_URL}/api/resume/{resume_id}",
+        headers=_headers(),
+        timeout=10,
+    )
+    return resp.status_code == 200
+
+
 def main():
     if not is_authenticated():
         show_auth_page()
@@ -724,7 +736,7 @@ def show_resume_builder():
                             )
                     
                     if st.button("🗑️ Delete", key=f"del_{rid}"):
-                        if api.delete_resume(rid):
+                        if delete_resume_local(rid):
                             st.success("Deleted!")
                             st.rerun()
                         st.markdown("---")
@@ -1416,15 +1428,51 @@ def show_ai_recruiter():
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        resume_text = st.text_area("📄 Resume Text", height=250, placeholder="Paste your resume...")
+        # NEW: Input method selection similar to Analyzer
+        input_method = st.radio("Resume Input", ["📝 Paste Text", "📁 Upload File", "✨ Use Generated Resume"], horizontal=True)
+
+        resume_text = ""
+        
+        if input_method == "📝 Paste Text":
+            resume_text = st.text_area("📄 Resume Text", height=250, placeholder="Paste your resume...")
+        elif input_method == "📁 Upload File":
+            uploaded = st.file_uploader("Upload Resume", type=["pdf", "docx", "txt"], key="recruiter_upload")
+            if uploaded:
+                with st.spinner("Extracting text from file..."):
+                    result = api.upload_resume_file(
+                        uploaded.read(),
+                        uploaded.name,
+                        uploaded.type or "application/octet-stream",
+                    )
+                    if result:
+                        resume_text = result.get("extracted_text", "")
+                        st.success(f"✅ {uploaded.name} extracted")
+                    else:
+                        st.error("Failed to extract text.")
+        else: # Use Generated Resume
+            last_resume = st.session_state.get("last_resume")
+            if last_resume:
+                # Extract text from the generated resume structure
+                content = last_resume.get("content", {})
+                raw = last_resume.get("raw_text", "")
+                if raw:
+                    resume_text = raw
+                    st.success("✅ Using your most recently generated resume")
+                else:
+                    st.info("Converting structured resume to text...")
+                    resume_text = json.dumps(content, indent=2)
+            else:
+                st.warning("No generated resume found. Please build one first or use another input method.")
+
         jd = st.text_area("📋 Job Description", height=200, placeholder="Paste the JD...")
 
         if st.button("🤖 Simulate Recruiter Review", use_container_width=True, type="primary"):
-            if not resume_text or not jd:
-                st.warning("Please provide both resume and job description.")
+            if not resume_text:
+                st.warning("Please provide a resume using one of the input methods.")
+            elif not jd:
+                st.warning("Please provide a job description.")
             else:
                 with st.spinner("🧠 Simulating recruiter review..."):
-                    # FIX #3: Use the dedicated simulate_recruiter function from api_client
                     result = api.simulate_recruiter(resume_text, jd)
                     if result:
                         st.session_state["recruiter_result"] = result
@@ -1432,29 +1480,41 @@ def show_ai_recruiter():
     with col2:
         if "recruiter_result" in st.session_state:
             result = st.session_state["recruiter_result"]
-            score = result.get("ats_score", 0)
-            if isinstance(score, (int, float)):
-                decision = "SHORTLISTED ✅" if score >= 60 else "NEEDS IMPROVEMENT ⚠️"
-                st.markdown(f"### Decision: {decision}")
-                score_class = "score-good" if score >= 60 else "score-low"
-                st.markdown(f'<div class="score-gauge {score_class}">{score}</div>', unsafe_allow_html=True)
-
-            # FIX #3: Map strengths from section_feedback since ResumeAnalyzeResponse has strengths
-            strengths = result.get("strengths", [])
-            if strengths:
-                st.markdown("### 💪 Strengths")
-                for s in strengths:
-                    st.markdown(f"✅ {s}")
-
-            suggestions = result.get("improvement_suggestions", [])
-            if suggestions:
-                st.markdown("### 📝 Suggestions")
-                for s in suggestions:
-                    st.markdown(f"💡 {s}")
-
-            overall = result.get("overall_feedback", "")
-            if overall:
-                st.info(overall)
+            
+            decision = result.get("decision", "rejected").upper()
+            confidence = result.get("confidence", 0.0)
+            
+            if decision == "SHORTLISTED":
+                st.success(f"### Decision: {decision} ✅")
+            else:
+                st.error(f"### Decision: REJECTED ❌")
+                
+            st.metric("Recruiter Confidence", f"{confidence*100:.0f}%")
+            
+            st.markdown("#### 🧠 Recruiter Reasoning")
+            for r in result.get("reasoning", []):
+                st.write(f"• {r}")
+                
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("#### ✅ Strengths")
+                for s in result.get("strengths", []):
+                    st.write(f"• {s}")
+            with c2:
+                st.markdown("#### ⚠️ Weaknesses")
+                for w in result.get("weaknesses", []):
+                    st.write(f"• {w}")
+                    
+            st.markdown("#### 💡 Suggestions to get Shortlisted")
+            for sug in result.get("suggestions", []):
+                st.info(sug)
+                
+            if result.get("comparison_notes"):
+                st.caption(f"📝 *Comparison Note: {result['comparison_notes']}*")
+            
+            # Show which model was used
+            model = result.get("model_used", "unknown")
+            st.caption(f"Simulator powered by: {model.capitalize()}")
 
 
 def show_ab_testing():

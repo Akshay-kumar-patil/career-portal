@@ -39,3 +39,12 @@ def quick_score(req: ResumeAnalyzeRequest, current_user: User = Depends(get_curr
     if not req.job_description:
         raise HTTPException(status_code=400, detail="Job description required for quick score")
     return analyzer_service.quick_score(req.resume_text, req.job_description)
+
+
+@router.post("/simulate")
+def simulate_recruiter(req: ResumeAnalyzeRequest, current_user: User = Depends(get_current_user)):
+    """Simulate a recruiter reviewing a resume against a JD."""
+    try:
+        return analyzer_service.simulate_recruiter(req.resume_text, req.job_description or "")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Simulation failed: {str(e)}")
