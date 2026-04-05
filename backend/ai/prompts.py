@@ -158,19 +158,31 @@ Write a personalized cover letter for the following position.
 **User Profile:**
 {user_profile}
 
-Write a compelling cover letter that:
-1. Opens with a hook that shows genuine interest
-2. Highlights 2-3 most relevant experiences/skills
-3. Connects past achievements to the role's requirements
-4. Shows knowledge of the company
-5. Closes with a confident call to action
+Write a compelling cover letter that returns the following JSON structure:
 
-Tone guide:
-- formal: Professional, traditional structure
-- concise: Short, direct, impact-focused (under 250 words)
-- creative: Shows personality while remaining professional
+{{
+    "recipient_name": "<Hiring Manager Name if known, or blank>",
+    "recipient_title": "<Hiring Manager Title if known, or Human Resources>",
+    "company_name": "<Company Name from the prompt>",
+    "company_address": "<Company Address if known, or City/State if known, or blank>",
+    "company_phone": "<Company Phone if known, or blank>",
+    "company_email": "<Company Email if known, or blank>",
+    "salutation": "<Opening salutation e.g. Dear Hiring Manager,>",
+    "body_paragraphs": [
+        "<Paragraph 1: Hook showing genuine interest>",
+        "<Paragraph 2: Highlight 2-3 most relevant experiences/skills>",
+        "<Paragraph 3: Connects past achievements to the role's requirements>",
+        "<Paragraph 4: Closes with a confident call to action>"
+    ],
+    "sign_off": "<Sign-off e.g. Best regards,>"
+}}
 
-Return ONLY the cover letter text, properly formatted with paragraphs.
+Rules:
+- Tone guide:
+  * formal: Professional, traditional structure
+  * concise: Short, direct, impact-focused (under 250 words total)
+  * creative: Shows personality while remaining professional
+- Return ONLY valid JSON, completely filled in. Do not use markdown wrappers unless it is ```json...``` around the whole thing.
 """
 
 RECRUITER_SIM_PROMPT = """You are a senior technical recruiter reviewing an application.
