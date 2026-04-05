@@ -9,7 +9,26 @@ class CoverLetterService:
         """Generate a personalized cover letter."""
         skills_str = ", ".join(skills) if skills else ""
         content = ai_service.generate_cover_letter(company, role, jd, skills_str, tone, context, profile)
-        word_count = len(content.split()) if isinstance(content, str) else 0
+        
+        word_count = 0
+        if isinstance(content, dict):
+            paragraphs = content.get("body_paragraphs", [])
+            word_count = sum(len(str(p).split()) for p in paragraphs)
+            
+            # Incorporate profile details automatically
+            import json
+            try:
+                prof = json.loads(profile)
+                content["user_name"] = prof.get("full_name", "")
+                contact = prof.get("contact", {})
+                content["user_location"] = contact.get("location", "")
+                content["user_phone"] = contact.get("phone", "")
+                content["user_email"] = contact.get("email", "")
+            except:
+                pass
+        elif isinstance(content, str):
+            word_count = len(content.split())
+            
         return {
             "content": content,
             "tone": tone,
