@@ -103,7 +103,7 @@ _PAGES = [
     "✉️ Cover Letter", "🎯 Job Tracker", "👥 Referrals",
     "🎤 Mock Interview", "📊 Skill Gap", "📈 Analytics",
     "📧 Email Generator", "🐙 GitHub Analyzer", "🤖 AI Recruiter",
-    "🧪 A/B Testing", "⚙️ Settings",
+    "🚀 Auto Apply Agent", "🧪 A/B Testing", "⚙️ Settings",
 ]
 
 
@@ -270,6 +270,7 @@ def main():
         "📧 Email Generator": show_email_generator,
         "🐙 GitHub Analyzer": show_github_analyzer,
         "🤖 AI Recruiter": show_ai_recruiter,
+        "🚀 Auto Apply Agent": show_auto_apply_agent,
         "🧪 A/B Testing": show_ab_testing,
         "⚙️ Settings": show_settings,
     }
@@ -1517,7 +1518,697 @@ def show_ai_recruiter():
             st.caption(f"Simulator powered by: {model.capitalize()}")
 
 
+
+def show_auto_apply_agent():
+    st.markdown("""
+    <style>
+    .agent-hero {
+        background: linear-gradient(135deg, #0F0C29 0%, #302B63 50%, #24243e 100%);
+        border: 1px solid rgba(108, 99, 255, 0.4);
+        border-radius: 20px;
+        padding: 2rem;
+        text-align: center;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .agent-hero::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(108,99,255,0.08) 0%, transparent 70%);
+        animation: pulse 4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+    .agent-title {
+        font-size: 2.8rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #6C63FF, #4ECDC4, #FFD93D);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+    }
+    .step-indicator {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0;
+        margin: 1.5rem 0;
+        flex-wrap: wrap;
+    }
+    .step-dot {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+    }
+    .step-circle {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1rem;
+        border: 2px solid;
+        transition: all 0.3s;
+    }
+    .step-active { background: #6C63FF; border-color: #6C63FF; color: white; box-shadow: 0 0 20px rgba(108,99,255,0.5); }
+    .step-done { background: #4ECDC4; border-color: #4ECDC4; color: white; }
+    .step-pending { background: transparent; border-color: #3D4460; color: #8892B0; }
+    .step-label { font-size: 0.72rem; color: #8892B0; margin-top: 6px; text-align: center; max-width: 70px; }
+    .step-line { width: 60px; height: 2px; background: #3D4460; margin-bottom: 22px; }
+    .step-line-done { background: linear-gradient(90deg, #4ECDC4, #6C63FF); }
+    .skill-badge-match {
+        display: inline-block;
+        background: rgba(78, 205, 196, 0.15);
+        border: 1px solid rgba(78, 205, 196, 0.4);
+        color: #4ECDC4;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        margin: 2px;
+    }
+    .skill-badge-miss {
+        display: inline-block;
+        background: rgba(255, 107, 107, 0.12);
+        border: 1px solid rgba(255, 107, 107, 0.3);
+        color: #FF6B6B;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        margin: 2px;
+    }
+    .answer-card {
+        background: rgba(26, 31, 46, 0.9);
+        border: 1px solid rgba(108, 99, 255, 0.2);
+        border-radius: 12px;
+        padding: 1.2rem;
+        margin: 0.6rem 0;
+        transition: border-color 0.2s;
+    }
+    .answer-card:hover { border-color: rgba(108, 99, 255, 0.5); }
+    .answer-label {
+        font-size: 0.78rem;
+        color: #8892B0;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 4px;
+    }
+    .match-score-ring {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        margin: 0 auto 1rem;
+        font-size: 2rem;
+        font-weight: 800;
+        border: 6px solid;
+    }
+    .score-high { border-color: #4ECDC4; color: #4ECDC4; }
+    .score-mid { border-color: #FFD93D; color: #FFD93D; }
+    .score-low { border-color: #FF6B6B; color: #FF6B6B; }
+    .success-banner {
+        background: linear-gradient(135deg, rgba(78,205,196,0.15), rgba(108,99,255,0.1));
+        border: 1px solid rgba(78, 205, 196, 0.4);
+        border-radius: 16px;
+        padding: 2rem;
+        text-align: center;
+        animation: slideIn 0.5s ease-out;
+    }
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .copy-field {
+        background: #0E1117;
+        border: 1px solid rgba(108,99,255,0.2);
+        border-radius: 8px;
+        padding: 0.8rem 1rem;
+        font-family: monospace;
+        font-size: 0.85rem;
+        color: #CDD6F4;
+        margin: 0.4rem 0;
+        word-break: break-word;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ── Hero Banner ──
+    st.markdown("""
+    <div class="agent-hero">
+        <div class="agent-title">🚀 Auto Apply Agent</div>
+        <div style="color:#8892B0; font-size:1.05rem; margin-bottom:0.5rem;">
+            AI-powered job application automation — paste a JD, get personalized answers instantly
+        </div>
+        <div style="display:flex; justify-content:center; gap:1rem; flex-wrap:wrap; margin-top:1rem;">
+            <span style="background:rgba(108,99,255,0.15);border:1px solid rgba(108,99,255,0.3);
+                         border-radius:20px;padding:4px 14px;font-size:0.82rem;color:#6C63FF;">
+                🧠 AI Form Fill
+            </span>
+            <span style="background:rgba(78,205,196,0.1);border:1px solid rgba(78,205,196,0.3);
+                         border-radius:20px;padding:4px 14px;font-size:0.82rem;color:#4ECDC4;">
+                📊 Skill Match Score
+            </span>
+            <span style="background:rgba(255,217,61,0.1);border:1px solid rgba(255,217,61,0.3);
+                         border-radius:20px;padding:4px 14px;font-size:0.82rem;color:#FFD93D;">
+                📋 Job Tracker Sync
+            </span>
+            <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.3);
+                         border-radius:20px;padding:4px 14px;font-size:0.82rem;color:#FF6B6B;">
+                🤖 Browser Automation
+            </span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Initialize session state ──
+    for key in ["aaa_step", "aaa_jd_data", "aaa_match", "aaa_answers", "aaa_submit_result", "aaa_resume_content"]:
+        if key not in st.session_state:
+            st.session_state[key] = None
+    if st.session_state["aaa_step"] is None:
+        st.session_state["aaa_step"] = 1
+
+    current_step = st.session_state["aaa_step"]
+
+    # ── Step Indicator ──
+    steps = [("1", "Input JD"), ("2", "AI Parses"), ("3", "Review"), ("4", "Submit")]
+    step_html = '<div class="step-indicator">'
+    for i, (num, label) in enumerate(steps):
+        step_num = i + 1
+        if step_num < current_step:
+            css = "step-done"
+            icon = "✓"
+        elif step_num == current_step:
+            css = "step-active"
+            icon = num
+        else:
+            css = "step-pending"
+            icon = num
+        step_html += f'<div class="step-dot"><div class="step-circle {css}">{icon}</div><div class="step-label">{label}</div></div>'
+        if i < len(steps) - 1:
+            line_css = "step-line-done" if step_num < current_step else "step-line"
+            step_html += f'<div class="{line_css}"></div>'
+    step_html += '</div>'
+    st.markdown(step_html, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # ═══════════════════════════════════════════════════
+    # STEP 1: Input JD
+    # ═══════════════════════════════════════════════════
+    if current_step == 1:
+        st.markdown("### 📋 Step 1: Paste Job Description")
+        st.markdown("*Paste any job description from LinkedIn, Naukri, Indeed, or any company website.*")
+
+        col1, col2 = st.columns([1.6, 1])
+
+        with col1:
+            input_mode = st.radio(
+                "Input method",
+                ["📝 Paste JD Text", "🔗 Job Posting URL"],
+                horizontal=True, key="aaa_input_mode"
+            )
+
+            jd_text = ""
+            jd_url = ""
+            if input_mode == "📝 Paste JD Text":
+                jd_text = st.text_area(
+                    "Job Description",
+                    height=280,
+                    placeholder="""Paste the full job description here...
+
+Example:
+Company: Google
+Role: Software Engineer, Backend
+Location: Bangalore, India (Hybrid)
+
+We are looking for a passionate Software Engineer with 2+ years of experience in Python, FastAPI, and cloud technologies...
+
+Requirements:
+- 2+ years Python experience
+- Strong API design skills
+- Experience with AWS or GCP
+- Knowledge of microservices architecture""",
+                    key="aaa_jd_text_input",
+                )
+            else:
+                jd_url = st.text_input(
+                    "Job Posting URL",
+                    placeholder="https://www.linkedin.com/jobs/view/... or https://www.naukri.com/job-...",
+                    key="aaa_jd_url_input",
+                )
+                if jd_url:
+                    st.info("💡 The AI will fetch and extract the job details from this URL automatically.")
+
+        with col2:
+            st.markdown("### 📄 Resume Source")
+            st.markdown("*Which resume should the agent use?*")
+
+            resumes = api.list_resumes() or []
+            resume_options = ["🆕 Latest Generated Resume"] + [
+                f"📄 {r.get('title', 'Resume')} (ATS: {r.get('ats_score', 'N/A')})"
+                for r in resumes
+            ]
+            selected_resume_label = st.selectbox(
+                "Select Resume", resume_options, key="aaa_resume_select"
+            )
+
+            # Get resume content
+            resume_content = {}
+            user_skills = []
+            if selected_resume_label == "🆕 Latest Generated Resume":
+                last = st.session_state.get("last_resume", {})
+                resume_content = last.get("content", {}) if last else {}
+                skills = resume_content.get("skills", {})
+                if isinstance(skills, dict):
+                    for v in skills.values():
+                        user_skills.extend([s.strip() for s in str(v).split(",")])
+                elif isinstance(skills, list):
+                    user_skills = skills
+                if resume_content:
+                    st.success(f"✅ Using: {resume_content.get('full_name', 'Latest Resume')}")
+                else:
+                    st.warning("⚠️ No generated resume found. Build one first in Resume Builder!")
+            else:
+                # Find selected resume
+                idx = resume_options.index(selected_resume_label) - 1
+                if 0 <= idx < len(resumes):
+                    selected_r = resumes[idx]
+                    full_r = api.get_resume(selected_r["id"])
+                    if full_r:
+                        resume_content = full_r.get("content", {})
+                        skills = resume_content.get("skills", {})
+                        if isinstance(skills, dict):
+                            for v in skills.values():
+                                user_skills.extend([s.strip() for s in str(v).split(",")])
+                        st.success(f"✅ Resume loaded — ATS: {selected_r.get('ats_score', 'N/A')}")
+
+            st.session_state["aaa_resume_content"] = resume_content
+
+            st.markdown("---")
+            st.markdown("### 🧠 What happens next?")
+            st.markdown("""
+            <div style="font-size:0.88rem; color:#8892B0; line-height:1.8;">
+            1️⃣ AI reads the job description<br>
+            2️⃣ Extracts company, role, skills<br>
+            3️⃣ Scores your resume match<br>
+            4️⃣ Generates personalized answers<br>
+            5️⃣ You review & apply with 1 click
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("---")
+        col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+        with col_btn2:
+            if st.button("🧠 Analyze Job & Match Resume →", use_container_width=True, type="primary", key="aaa_analyze_btn"):
+                if not jd_text and not jd_url:
+                    st.warning("⚠️ Please paste a JD or enter a URL.")
+                else:
+                    with st.spinner("🤖 AI is analyzing the job description and matching your resume..."):
+                        result = api.parse_jd_for_apply(
+                            text=jd_text if jd_text else None,
+                            url=jd_url if jd_url else None,
+                            resume_skills=user_skills,
+                        )
+                    if result:
+                        st.session_state["aaa_jd_data"] = result.get("jd_data", {})
+                        st.session_state["aaa_match"] = result.get("skill_match", {})
+                        st.session_state["aaa_step"] = 2
+                        st.rerun()
+                    else:
+                        st.error("❌ Failed to parse the job description. Please try again.")
+
+    # ═══════════════════════════════════════════════════
+    # STEP 2: AI Parsing Result
+    # ═══════════════════════════════════════════════════
+    elif current_step == 2:
+        jd_data = st.session_state.get("aaa_jd_data", {})
+        match_data = st.session_state.get("aaa_match", {})
+
+        st.markdown("### ✅ Step 2: Job Parsed Successfully!")
+
+        col1, col2 = st.columns([1.8, 1])
+
+        with col1:
+            # Job Details
+            company = jd_data.get("company", "Unknown")
+            role = jd_data.get("role", "Unknown")
+            location = jd_data.get("location", "Not specified")
+            job_type = jd_data.get("job_type", "Full-time")
+            exp_req = jd_data.get("experience_required", "Not specified")
+            platform = jd_data.get("apply_platform", "Other")
+            apply_url = jd_data.get("apply_url", "")
+
+            st.markdown(f"""
+            <div style="background:linear-gradient(135deg,rgba(108,99,255,0.08),rgba(78,205,196,0.05));
+                         border:1px solid rgba(108,99,255,0.25);border-radius:16px;padding:1.5rem;margin-bottom:1rem;">
+                <div style="font-size:1.6rem;font-weight:800;color:#CDD6F4;margin-bottom:0.4rem;">{company}</div>
+                <div style="font-size:1.1rem;color:#6C63FF;font-weight:600;margin-bottom:1rem;">{role}</div>
+                <div style="display:flex;gap:0.8rem;flex-wrap:wrap;">
+                    <span style="background:rgba(108,99,255,0.15);border-radius:20px;padding:3px 12px;
+                                  font-size:0.82rem;color:#6C63FF;">📍 {location}</span>
+                    <span style="background:rgba(78,205,196,0.1);border-radius:20px;padding:3px 12px;
+                                  font-size:0.82rem;color:#4ECDC4;">💼 {job_type}</span>
+                    <span style="background:rgba(255,217,61,0.1);border-radius:20px;padding:3px 12px;
+                                  font-size:0.82rem;color:#FFD93D;">⏱ {exp_req}</span>
+                    <span style="background:rgba(255,107,107,0.1);border-radius:20px;padding:3px 12px;
+                                  font-size:0.82rem;color:#FF6B6B;">🌐 {platform}</span>
+                </div>
+                {f'<div style="margin-top:0.8rem;font-size:0.82rem;color:#8892B0;">🔗 Apply URL: <a href="{apply_url}" style="color:#6C63FF;">{apply_url[:60]}...</a></div>' if apply_url else '<div style="margin-top:0.8rem;font-size:0.82rem;color:#FFD93D;">⚠️ No direct apply URL found — use AI answers to apply manually</div>'}
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Required Skills
+            req_skills = jd_data.get("required_skills", [])
+            pref_skills = jd_data.get("preferred_skills", [])
+            matched_req = match_data.get("matched_required", [])
+            missing_req = match_data.get("missing_required", [])
+            matched_pref = match_data.get("matched_preferred", [])
+
+            if req_skills:
+                st.markdown("**🔧 Required Skills**")
+                skills_html = ""
+                for s in req_skills:
+                    if s in matched_req:
+                        skills_html += f'<span class="skill-badge-match">✓ {s}</span>'
+                    else:
+                        skills_html += f'<span class="skill-badge-miss">✗ {s}</span>'
+                st.markdown(skills_html, unsafe_allow_html=True)
+
+            if pref_skills:
+                st.markdown("**💡 Preferred Skills**")
+                pref_html = "".join(
+                    f'<span class="skill-badge-match">+ {s}</span>' if s in matched_pref
+                    else f'<span style="display:inline-block;background:rgba(108,99,255,0.08);border:1px solid rgba(108,99,255,0.2);color:#8892B0;padding:3px 10px;border-radius:20px;font-size:0.8rem;margin:2px;">~ {s}</span>'
+                    for s in pref_skills
+                )
+                st.markdown(pref_html, unsafe_allow_html=True)
+
+            # Key highlights
+            highlights = jd_data.get("key_highlights", [])
+            if highlights:
+                st.markdown("**⭐ Key Highlights**")
+                for h in highlights[:4]:
+                    st.markdown(f"• {h}")
+
+        with col2:
+            # Match Score Ring
+            score = match_data.get("match_score", 0)
+            score_css = "score-high" if score >= 70 else ("score-mid" if score >= 40 else "score-low")
+            score_label = "Strong Match" if score >= 70 else ("Good Match" if score >= 50 else ("Partial Match" if score >= 30 else "Skill Gap"))
+            score_color = "#4ECDC4" if score >= 70 else ("#FFD93D" if score >= 40 else "#FF6B6B")
+
+            st.markdown(f"""
+            <div style="text-align:center;padding:1.5rem;background:rgba(26,31,46,0.8);
+                         border:1px solid rgba(108,99,255,0.2);border-radius:16px;margin-bottom:1rem;">
+                <div style="font-size:0.85rem;color:#8892B0;text-transform:uppercase;letter-spacing:1px;margin-bottom:1rem;">
+                    Resume Match Score
+                </div>
+                <div class="match-score-ring {score_css}">
+                    <div>{score}%</div>
+                    <div style="font-size:0.6rem;font-weight:400;">{score_label}</div>
+                </div>
+                <div style="margin-top:0.5rem;font-size:0.82rem;color:#8892B0;">
+                    ✓ {len(matched_req)} required skills matched<br>
+                    ✗ {len(missing_req)} skills to highlight
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            if missing_req:
+                st.markdown("**📚 Skills to Bridge**")
+                for s in missing_req[:5]:
+                    st.markdown(f"<span class='skill-badge-miss'>🎯 {s}</span>", unsafe_allow_html=True)
+
+            salary = jd_data.get("salary_range")
+            if salary:
+                st.markdown(f"**💰 Salary Range:** `{salary}`")
+
+        st.markdown("---")
+        col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+        with col_btn1:
+            if st.button("← Back", key="aaa_back_2"):
+                st.session_state["aaa_step"] = 1
+                st.rerun()
+        with col_btn2:
+            if st.button("🚀 Generate My Application Answers →", use_container_width=True, type="primary", key="aaa_gen_btn"):
+                resume_content = st.session_state.get("aaa_resume_content", {})
+                with st.spinner("✨ AI is crafting your personalized application answers..."):
+                    result = api.generate_apply_answers(
+                        jd_data=jd_data,
+                        resume_content=resume_content,
+                    )
+                if result:
+                    st.session_state["aaa_answers"] = result.get("answers", {})
+                    st.session_state["aaa_step"] = 3
+                    st.rerun()
+                else:
+                    st.error("❌ Failed to generate answers. Please try again.")
+
+    # ═══════════════════════════════════════════════════
+    # STEP 3: Review & Edit Answers
+    # ═══════════════════════════════════════════════════
+    elif current_step == 3:
+        jd_data = st.session_state.get("aaa_jd_data", {})
+        answers = st.session_state.get("aaa_answers", {})
+        company = jd_data.get("company", "the company")
+        role = jd_data.get("role", "the role")
+
+        st.markdown(f"### ✏️ Step 3: Review & Edit Your Application for **{company}**")
+        st.info("💡 AI has pre-filled all fields. Review and edit anything before submitting!")
+
+        col1, col2 = st.columns([1, 1])
+
+        edited_answers = dict(answers)
+
+        with col1:
+            st.markdown("**👤 Personal Info**")
+            edited_answers["full_name"] = st.text_input(
+                "Full Name", value=answers.get("full_name", ""), key="ea_name"
+            )
+            edited_answers["email"] = st.text_input(
+                "Email", value=answers.get("email", ""), key="ea_email"
+            )
+            edited_answers["phone"] = st.text_input(
+                "Phone", value=answers.get("phone", ""), key="ea_phone"
+            )
+            edited_answers["linkedin"] = st.text_input(
+                "LinkedIn URL", value=answers.get("linkedin", ""), key="ea_linkedin"
+            )
+            edited_answers["portfolio"] = st.text_input(
+                "Portfolio / GitHub", value=answers.get("portfolio", ""), key="ea_portfolio"
+            )
+            edited_answers["headline"] = st.text_input(
+                "Professional Headline", value=answers.get("headline", ""), key="ea_headline"
+            )
+
+            st.markdown("---")
+            st.markdown("**💼 Job Details**")
+            edited_answers["experience_years"] = st.text_input(
+                "Years of Experience", value=str(answers.get("experience_years", "")), key="ea_exp"
+            )
+            edited_answers["current_salary"] = st.text_input(
+                "Current CTC (LPA)", value=answers.get("current_salary", ""), key="ea_curr_sal",
+                placeholder="e.g. 6 LPA"
+            )
+            edited_answers["expected_salary"] = st.text_input(
+                "Expected CTC (LPA)", value=answers.get("expected_salary", ""), key="ea_exp_sal",
+                placeholder="e.g. 9 LPA"
+            )
+            edited_answers["notice_period"] = st.text_input(
+                "Notice Period", value=answers.get("notice_period", "30 days"), key="ea_notice"
+            )
+            edited_answers["availability"] = st.text_input(
+                "Availability", value=answers.get("availability", "Immediately available"), key="ea_avail"
+            )
+
+        with col2:
+            st.markdown("**📝 Application Answers (AI-Generated)**")
+
+            edited_answers["cover_note"] = st.text_area(
+                "✉️ Cover Note / Message",
+                value=answers.get("cover_note", ""),
+                height=160,
+                key="ea_cover",
+                help="3-4 sentences. AI tailored this to the JD. Edit freely!"
+            )
+
+            edited_answers["why_company"] = st.text_area(
+                f"🏢 Why do you want to join {company}?",
+                value=answers.get("why_company", ""),
+                height=120,
+                key="ea_why",
+                help="Your genuine reason. AI made it specific to the company."
+            )
+
+            edited_answers["additional_info"] = st.text_area(
+                "➕ Additional Information",
+                value=answers.get("additional_info", ""),
+                height=80,
+                key="ea_add_info",
+                placeholder="Any other selling point or context..."
+            )
+
+            st.markdown("---")
+            # Preview card
+            st.markdown("""
+            <div style="background:linear-gradient(135deg,rgba(108,99,255,0.05),rgba(78,205,196,0.05));
+                         border:1px solid rgba(108,99,255,0.2);border-radius:12px;padding:1rem;">
+                <div style="font-size:0.78rem;color:#8892B0;text-transform:uppercase;margin-bottom:0.5rem;letter-spacing:0.8px;">
+                    Application Summary
+                </div>
+            """, unsafe_allow_html=True)
+            st.markdown(f"🏢 **Company:** {company}")
+            st.markdown(f"💼 **Role:** {role}")
+            apply_url = jd_data.get("apply_url", "")
+            if apply_url:
+                st.markdown(f"🔗 **Apply URL:** [{apply_url[:45]}...]({apply_url})")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # Save edited answers back to session state for final step
+        st.session_state["aaa_answers"] = edited_answers
+
+        st.markdown("---")
+        col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+        with col_btn1:
+            if st.button("← Back", key="aaa_back_3"):
+                st.session_state["aaa_step"] = 2
+                st.rerun()
+        with col_btn2:
+            if st.button("✅ Submit Application →", use_container_width=True, type="primary", key="aaa_submit_btn"):
+                with st.spinner("🤖 Agent is processing your application..."):
+                    result = api.submit_auto_application(
+                        jd_data=jd_data,
+                        answers=edited_answers,
+                    )
+                if result:
+                    st.session_state["aaa_submit_result"] = result
+                    # Auto-create a Job Tracker entry
+                    tracker_data = {
+                        "company": company,
+                        "role": role,
+                        "status": "applied",
+                        "job_url": jd_data.get("apply_url", ""),
+                        "location": jd_data.get("location", ""),
+                        "notes": f"Applied via Auto Apply Agent. Match Score: {st.session_state.get('aaa_match', {}).get('match_score', 'N/A')}%",
+                    }
+                    api.create_application(tracker_data)
+                    st.session_state["aaa_step"] = 4
+                    st.rerun()
+                else:
+                    st.error("❌ Submission failed. Your answers are ready to copy manually.")
+
+    # ═══════════════════════════════════════════════════
+    # STEP 4: Result & Celebration
+    # ═══════════════════════════════════════════════════
+    elif current_step == 4:
+        jd_data = st.session_state.get("aaa_jd_data", {})
+        answers = st.session_state.get("aaa_answers", {})
+        submit_result = st.session_state.get("aaa_submit_result", {})
+        company = jd_data.get("company", "the company")
+        role = jd_data.get("role", "the role")
+        mode = submit_result.get("submission_result", {}).get("mode", "ai_prep")
+
+        if mode == "auto":
+            st.markdown("""
+            <div class="success-banner">
+                <div style="font-size:3rem;">🎉</div>
+                <div style="font-size:1.8rem;font-weight:800;color:#4ECDC4;margin:0.5rem 0;">Application Submitted!</div>
+                <div style="color:#8892B0;">Browser agent auto-filled and submitted your application</div>
+            </div>
+            """, unsafe_allow_html=True)
+            msg = submit_result.get("submission_result", {}).get("message", "")
+            if msg:
+                st.success(msg)
+            # Show screenshot if available
+            screenshot = submit_result.get("submission_result", {}).get("screenshot_base64", "")
+            if screenshot:
+                st.markdown("**📸 Browser Screenshot**")
+                st.markdown(
+                    f'<img src="data:image/png;base64,{screenshot}" style="width:100%;border-radius:8px;border:1px solid rgba(108,99,255,0.3);">',
+                    unsafe_allow_html=True
+                )
+        else:
+            # AI Prep mode — show copy-ready answers
+            st.markdown("""
+            <div class="success-banner">
+                <div style="font-size:3rem;">✅</div>
+                <div style="font-size:1.8rem;font-weight:800;color:#6C63FF;margin:0.5rem 0;">Application Package Ready!</div>
+                <div style="color:#8892B0;">Your AI-generated answers are ready. Copy & paste to apply!</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            apply_url = jd_data.get("apply_url")
+            if apply_url:
+                st.markdown(f"### 🔗 Apply Here")
+                st.markdown(f"[🚀 Open Application Form]({apply_url})", unsafe_allow_html=False)
+
+        st.markdown("---")
+        st.markdown("### 📋 Your Application Answers (Copy to Apply)")
+
+        col1, col2 = st.columns(2)
+        copy_fields = [
+            ("Full Name", "full_name"), ("Email", "email"), ("Phone", "phone"),
+            ("LinkedIn", "linkedin"), ("Portfolio / GitHub", "portfolio"),
+            ("Headline", "headline"), ("Experience (Years)", "experience_years"),
+            ("Current CTC", "current_salary"), ("Expected CTC", "expected_salary"),
+            ("Notice Period", "notice_period"), ("Availability", "availability"),
+        ]
+        textblock_fields = [
+            ("✉️ Cover Note", "cover_note"),
+            ("🏢 Why This Company?", "why_company"),
+            ("➕ Additional Info", "additional_info"),
+        ]
+
+        with col1:
+            for label, key in copy_fields:
+                val = answers.get(key, "")
+                if val:
+                    st.markdown(f"**{label}**")
+                    st.markdown(f'<div class="copy-field">{val}</div>', unsafe_allow_html=True)
+
+        with col2:
+            for label, key in textblock_fields:
+                val = answers.get(key, "")
+                if val:
+                    st.markdown(f"**{label}**")
+                    st.text_area(label, value=val, height=130, key=f"copy_{key}", label_visibility="collapsed")
+
+
+        st.markdown("---")
+        st.success("✅ This application has been automatically added to your **Job Tracker**!")
+
+        col_r1, col_r2, col_r3 = st.columns(3)
+        with col_r1:
+            if st.button("🔄 Apply to Another Job", use_container_width=True, key="aaa_reset"):
+                for key in ["aaa_step", "aaa_jd_data", "aaa_match", "aaa_answers", "aaa_submit_result"]:
+                    st.session_state[key] = None
+                st.session_state["aaa_step"] = 1
+                st.rerun()
+        with col_r2:
+            if st.button("🎯 View Job Tracker", use_container_width=True, key="aaa_tracker"):
+                _navigate("🎯 Job Tracker")
+                st.rerun()
+        with col_r3:
+            if st.button("📊 View Analytics", use_container_width=True, key="aaa_analytics"):
+                _navigate("📈 Analytics")
+                st.rerun()
+
+
 def show_ab_testing():
+
     st.markdown('<h1 class="main-header">🧪 Resume A/B Testing</h1>', unsafe_allow_html=True)
     st.markdown('<p class="sub-header">Compare resume versions and track which performs better</p>', unsafe_allow_html=True)
 
