@@ -182,8 +182,9 @@ class ModelRouter:
     def _get_groq(self, temperature: float, max_tokens: int) -> BaseChatModel:
         """Groq inference — ultra-fast, free tier, uses llama-3.3-70b-versatile."""
         from langchain_groq import ChatGroq
-        # Groq max_tokens cap is 32768 for llama-3.3-70b-versatile
-        safe_max_tokens = min(max_tokens, 8192)
+        # llama-3.3-70b-versatile supports up to 32768 output tokens
+        # Cap at 16384 to leave room for the prompt tokens (input context)
+        safe_max_tokens = min(max_tokens, 16384)
         return ChatGroq(
             model=settings.GROQ_MODEL,
             groq_api_key=settings.GROQ_API_KEY,
@@ -208,7 +209,7 @@ class ModelRouter:
             "estimated_cost_usd": round(self._estimated_cost_usd, 4),
         }
 
-    def track_usage(self, tokens: int, model: str = "gemini-2.5-flash"):
+    def track_usage(self, tokens: int, model: str = "llama-3.3-70b-versatile"):
         self._total_tokens_used += tokens
         cost_per_1k = {
             "gemini-2.0-flash": 0.0001, "gemini-2.0-flash-lite": 0.00005,
