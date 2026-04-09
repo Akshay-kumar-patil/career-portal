@@ -450,7 +450,8 @@ def show_resume_builder():
 
             # ── Target JD ──
             with st.expander("🎯 Target Job Description", expanded=True):
-                jd = st.text_area("Job Description (optional — AI optimizes for this JD)", height=150)
+                st.caption("Optional: Provide a Job Description to help the AI optimize your resume for a specific role.")
+                jd = st.text_area("Job Description", height=150, placeholder="Paste JD or leave blank for a general professional resume...")
                 context = st.text_input("Additional Instructions for AI", placeholder="e.g. Focus on backend skills, keep it to 1 page")
 
         # ── Right Column: Generate & Preview ──
@@ -573,6 +574,7 @@ def show_resume_builder():
                                 jd or "",
                                 existing_resume=json.dumps(resume_data, indent=2),
                                 additional_context=context,
+                                resume_data=resume_data,
                             )
                         except requests.exceptions.ReadTimeout:
                             st.error(
@@ -739,18 +741,37 @@ def show_resume_builder():
                         if delete_resume_local(rid):
                             st.success("Deleted!")
                             st.rerun()
-                        st.markdown("---")
+                    
+                    # --- Text Preview ---
+                    st.markdown("---")
+                    detail_key = f"detail_{rid}"
+                    if detail_key not in st.session_state:
+                        with st.spinner("Fetching details..."):
+                            st.session_state[detail_key] = api.get_resume(rid)
+                    
+                    full = st.session_state.get(detail_key)
+                    if full:
                         content = full.get("content", {})
                         if isinstance(content, dict):
                             st.markdown(f"**Name:** {content.get('full_name', 'N/A')}")
-                            if content.get("summary"):
-                                st.markdown(f"**Summary:** {content['summary'][:200]}...")
-                            if content.get("skills"):
+                            
+                            # Summary stabilization
+                            raw_summary = content.get("summary", "")
+                            if isinstance(raw_summary, list):
+                                summary_text = " ".join(raw_summary)
+                            else:
+                                summary_text = str(raw_summary)
+                            if summary_text:
+                                st.markdown(f"**Summary:** {summary_text[:200]}...")
+                                
+                            # Skills stabilization
+                            skills_data = content.get("skills", {})
+                            if isinstance(skills_data, dict) and skills_data:
                                 st.markdown("**Skills:**")
-                                for cat, skills_val in content["skills"].items():
+                                for cat, skills_val in skills_data.items():
                                     if isinstance(skills_val, list):
                                         st.markdown(f"  • **{cat}:** {', '.join(skills_val)}")
-                                    else:
+                                    elif isinstance(skills_val, str):
                                         st.markdown(f"  • **{cat}:** {skills_val}")
                         else:
                             st.json(content)
