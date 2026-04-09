@@ -14,6 +14,11 @@ jinja_env = Environment(
     autoescape=False,  # Disable autoescape for resume HTML rendering
 )
 
+# Max file sizes (in bytes)
+MAX_PDF_SIZE = 5 * 1024 * 1024  # 5MB
+MAX_DOCX_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_TXT_SIZE = 2 * 1024 * 1024  # 2MB
+
 
 class FileService:
 
@@ -36,6 +41,32 @@ class FileService:
             logger.error(f"Template rendering error: {e}")
             return f"<html><body><p>Template error: {e}</p></body></html>"
 
+    def _validate_file_size(self, filepath: str, max_size: int, file_type: str) -> bool:
+        """Check if file exceeds max size and log appropriately."""
+        try:
+            if not os.path.exists(filepath):
+                logger.error(f"File not found: {filepath}")
+                return False
+            
+            file_size = os.path.getsize(filepath)
+            if file_size > max_size:
+                logger.warning(
+                    f"{file_type} generation warning: File size {file_size} bytes exceeds limit {max_size} bytes",
+                    extra={
+                        "file_path": filepath,
+                        "file_size": file_size,
+                        "max_size": max_size,
+                        "file_type": file_type
+                    }
+                )
+                return False
+            
+            logger.debug(f"{file_type} file validated: {file_size} bytes")
+            return True
+        except Exception as e:
+            logger.error(f"Size validation error: {e}")
+            return False
+
     def generate_pdf(self, html_content: str, filename: Optional[str] = None) -> str:
         """Generate PDF from HTML content. Returns file path."""
         if not filename:
@@ -45,6 +76,13 @@ class FileService:
         try:
             from weasyprint import HTML
             HTML(string=html_content).write_pdf(filepath)
+            
+            # Validate file size
+            if not self._validate_file_size(filepath, MAX_PDF_SIZE, "PDF"):
+                os.remove(filepath)
+                raise ValueError(f"Generated PDF exceeds {MAX_PDF_SIZE} bytes limit")
+            
+            logger.info(f"PDF generated successfully: {filepath}")
             return filepath
         except ImportError:
             logger.warning("weasyprint not installed. Trying pdfkit fallback...")
@@ -52,12 +90,20 @@ class FileService:
             try:
                 import pdfkit
                 pdfkit.from_string(html_content, filepath)
+                
+                # Validate file size
+                if not self._validate_file_size(filepath, MAX_PDF_SIZE, "PDF"):
+                    os.remove(filepath)
+                    raise ValueError(f"Generated PDF exceeds {MAX_PDF_SIZE} bytes limit")
+                
+                logger.info(f"PDF generated via pdfkit: {filepath}")
                 return filepath
             except (ImportError, Exception) as e2:
-                logger.warning(f"pdfkit also failed: {e2}. Saving as HTML.")
+                logger.warning(f"pdfkit also failed: {e2}. Saving as HTML fallback.")
                 html_path = filepath.replace(".pdf", ".html")
                 with open(html_path, "w", encoding="utf-8") as f:
                     f.write(html_content)
+                logger.info(f"HTML fallback generated: {html_path}")
                 return html_path
         except Exception as e:
             logger.error(f"PDF generation error: {e}")
@@ -65,6 +111,7 @@ class FileService:
             html_path = filepath.replace(".pdf", ".html")
             with open(html_path, "w", encoding="utf-8") as f:
                 f.write(html_content)
+            logger.info(f"HTML fallback generated due to error: {html_path}")
             return html_path
 
     def generate_docx(self, resume_data: dict, filename: Optional[str] = None) -> str:
@@ -110,18 +157,6 @@ class FileService:
                         doc.add_paragraph(s)
                 else:
                     doc.add_paragraph(str(summary))
-
-            # Education
-            education = resume_data.get("education", [])
-            if education:
-                doc.add_heading("Education", level=1)
-                for edu in education:
-                    p = doc.add_paragraph()
-            # Summary
-            summary = resume_data.get("summary")
-            if summary:
-                doc.add_heading("Professional Summary", level=1)
-                doc.add_paragraph(summary)
 
             # Education
             education = resume_data.get("education", [])
@@ -204,11 +239,6 @@ class FileService:
             certs = resume_data.get("certifications", [])
             if certs:
                 doc.add_heading("Certifications", level=1)
-                if isinstance(certs, list):
-                    for cert in certs:
-                        doc.add_paragraph(str(cert), style='List Bullet')
-                else:
-                    doc.add_paragraph(str(certs))
                 for cert in certs:
                     parts = [cert.get("name", "")]
                     if cert.get("issuer"):
@@ -225,6 +255,13 @@ class FileService:
                     doc.add_paragraph(ach, style='List Bullet')
 
             doc.save(filepath)
+            
+            # Validate file size
+            if not self._validate_file_size(filepath, MAX_DOCX_SIZE, "DOCX"):
+                os.remove(filepath)
+                raise ValueError(f"Generated DOCX exceeds {MAX_DOCX_SIZE} bytes limit")
+            
+            logger.info(f"DOCX generated successfully: {filepath}")
             return filepath
 
         except ImportError:
@@ -240,78 +277,90 @@ class FileService:
             filename = f"resume_{uuid.uuid4().hex[:8]}.txt"
         filepath = os.path.join(settings.GENERATED_DIR, filename)
 
-        lines = []
-        lines.append(resume_data.get("full_name", "Your Name").upper())
-        contact = resume_data.get("contact", {})
-        contact_parts = [v for v in contact.values() if v]
-        lines.append(" | ".join(contact_parts))
-        lines.append("=" * 60)
+        try:
+            lines = []
+            lines.append(resume_data.get("full_name", "Your Name").upper())
+            contact = resume_data.get("contact", {})
+            contact_parts = [v for v in contact.values() if v]
+            lines.append(" | ".join(contact_parts))
+            lines.append("=" * 60)
 
-        if resume_data.get("summary"):
-            lines.append("\nPROFESSIONAL SUMMARY")
-            lines.append("-" * 40)
-            summary = resume_data["summary"]
-            if isinstance(summary, list):
-                for s in summary:
-                    lines.append(s)
-            else:
-                lines.append(str(summary))
+            if resume_data.get("summary"):
+                lines.append("\nPROFESSIONAL SUMMARY")
+                lines.append("-" * 40)
+                summary = resume_data["summary"]
+                if isinstance(summary, list):
+                    for s in summary:
+                        lines.append(s)
+                else:
+                    lines.append(str(summary))
 
-        if resume_data.get("education"):
-            lines.append("\nEDUCATION")
-            lines.append("-" * 40)
-            for edu in resume_data.get("education", []):
-                lines.append(f"{edu.get('degree', '')} — {edu.get('school', '')} ({edu.get('dates', '')})")
-                if edu.get("grade"):
-                    lines.append(f"  {edu['grade']}")
+            if resume_data.get("education"):
+                lines.append("\nEDUCATION")
+                lines.append("-" * 40)
+                for edu in resume_data.get("education", []):
+                    lines.append(f"{edu.get('degree', '')} — {edu.get('school', '')} ({edu.get('dates', '')})")
+                    if edu.get("grade"):
+                        lines.append(f"  {edu['grade']}")
 
-        skills = resume_data.get("skills", {})
-        if skills:
-            lines.append("\nTECHNICAL SKILLS")
-            lines.append("-" * 40)
-            if isinstance(skills, dict):
-                for cat, slist in skills.items():
-                    if slist:
-                        if isinstance(slist, list):
-                            lines.append(f"{cat}: {', '.join(slist)}")
-                        else:
-                            lines.append(f"{cat}: {slist}")
+            skills = resume_data.get("skills", {})
+            if skills:
+                lines.append("\nTECHNICAL SKILLS")
+                lines.append("-" * 40)
+                if isinstance(skills, dict):
+                    for cat, slist in skills.items():
+                        if slist:
+                            if isinstance(slist, list):
+                                lines.append(f"{cat}: {', '.join(slist)}")
+                            else:
+                                lines.append(f"{cat}: {slist}")
 
-        for exp in resume_data.get("experience", []):
-            lines.append(f"\n{exp.get('company', '')} — {exp.get('title', '')}")
-            lines.append(f"{exp.get('location', '')} | {exp.get('dates', '')}")
-            for bullet in exp.get("bullets", []):
-                lines.append(f"  • {bullet}")
-
-        if resume_data.get("projects"):
-            lines.append("\nPROJECTS")
-            lines.append("-" * 40)
-            for proj in resume_data.get("projects", []):
-                tech = f" ({proj.get('tech_stack', '')})" if proj.get('tech_stack') else ""
-                lines.append(f"{proj.get('name', '')}{tech}")
-                if proj.get("live_url"):
-                    lines.append(f"  Live: {proj['live_url']}")
-                for bullet in proj.get("bullets", []):
+            for exp in resume_data.get("experience", []):
+                lines.append(f"\n{exp.get('company', '')} — {exp.get('title', '')}")
+                lines.append(f"{exp.get('location', '')} | {exp.get('dates', '')}")
+                for bullet in exp.get("bullets", []):
                     lines.append(f"  • {bullet}")
 
-        if resume_data.get("certifications"):
-            lines.append("\nCERTIFICATIONS")
-            lines.append("-" * 40)
-            for cert in resume_data.get("certifications", []):
-                parts = [cert.get("name", "")]
-                if cert.get("issuer"):
-                    parts.append(cert["issuer"])
-                lines.append(" — ".join(parts))
+            if resume_data.get("projects"):
+                lines.append("\nPROJECTS")
+                lines.append("-" * 40)
+                for proj in resume_data.get("projects", []):
+                    tech = f" ({proj.get('tech_stack', '')})" if proj.get('tech_stack') else ""
+                    lines.append(f"{proj.get('name', '')}{tech}")
+                    if proj.get("live_url"):
+                        lines.append(f"  Live: {proj['live_url']}")
+                    for bullet in proj.get("bullets", []):
+                        lines.append(f"  • {bullet}")
 
-        if resume_data.get("achievements"):
-            lines.append("\nACHIEVEMENTS")
-            lines.append("-" * 40)
-            for ach in resume_data.get("achievements", []):
-                lines.append(f"  • {ach}")
+            if resume_data.get("certifications"):
+                lines.append("\nCERTIFICATIONS")
+                lines.append("-" * 40)
+                for cert in resume_data.get("certifications", []):
+                    parts = [cert.get("name", "")]
+                    if cert.get("issuer"):
+                        parts.append(cert["issuer"])
+                    lines.append(" — ".join(parts))
 
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines))
-        return filepath
+            if resume_data.get("achievements"):
+                lines.append("\nACHIEVEMENTS")
+                lines.append("-" * 40)
+                for ach in resume_data.get("achievements", []):
+                    lines.append(f"  • {ach}")
+
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write("\n".join(lines))
+            
+            # Validate file size
+            if not self._validate_file_size(filepath, MAX_TXT_SIZE, "TXT"):
+                os.remove(filepath)
+                raise ValueError(f"Generated TXT exceeds {MAX_TXT_SIZE} bytes limit")
+            
+            logger.info(f"TXT generated successfully: {filepath}")
+            return filepath
+        
+        except Exception as e:
+            logger.error(f"TXT generation error: {e}")
+            return ""
 
 
 file_service = FileService()
