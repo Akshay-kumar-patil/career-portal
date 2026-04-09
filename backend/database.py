@@ -2,10 +2,13 @@
 Database setup for SQLite (SQLAlchemy) and ChromaDB (vector store).
 """
 import os
+import logging
 import chromadb
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from backend.config import settings
+
+logger = logging.getLogger(__name__)
 
 # FIX: echo=settings.DEBUG leaks all SQL to logs even in staging.
 # Only enable when SQL_ECHO=true is explicitly set.
@@ -31,11 +34,30 @@ def get_db():
         db.close()
 
 
-chroma_client = chromadb.PersistentClient(path=settings.CHROMA_PERSIST_DIR)
+chroma_client = None
+
+
+def _init_chroma_client():
+    """Initialize Chroma lazily and degrade gracefully on local disk issues."""
+    global chroma_client
+    if chroma_client is not None:
+        return chroma_client
+    try:
+        chroma_client = chromadb.PersistentClient(path=settings.CHROMA_PERSIST_DIR)
+    except Exception as e:
+        logger.warning(
+            "ChromaDB unavailable; semantic search features will be disabled. Error: %s",
+            e,
+        )
+        chroma_client = False
+    return chroma_client
 
 
 def get_chroma_collection(name: str = "resumes"):
-    return chroma_client.get_or_create_collection(
+    client = _init_chroma_client()
+    if not client:
+        raise RuntimeError("ChromaDB is unavailable in this environment")
+    return client.get_or_create_collection(
         name=name,
         metadata={"hnsw:space": "cosine"},
     )
@@ -44,3 +66,4 @@ def get_chroma_collection(name: str = "resumes"):
 def init_db():
     from backend.models import user, resume, application, referral, template  # noqa
     Base.metadata.create_all(bind=engine)
+    _init_chroma_client()
