@@ -24,7 +24,7 @@ from backend.utils.helpers import clean_ai_response, safe_json_parse
 logger = logging.getLogger(__name__)
 
 # Max chars for context inputs to prevent token overflow on Groq (32k ctx window)
-_MAX_CONTEXT_CHARS = 6000
+_MAX_CONTEXT_CHARS = 4000
 
 
 def _truncate_inputs(inputs: dict) -> dict:
@@ -104,10 +104,17 @@ def _invoke(
         return clean_ai_response(raw)
     except Exception as groq_err:
         logger.error(f"Groq fallback also failed: {groq_err}")
-        raise RuntimeError(
-            f"Both primary provider and Groq fallback failed. "
-            f"Groq error: {groq_err}"
-        )
+        # Detect if it's a rate limit error to provide better advice
+        err_msg = str(groq_err)
+        if "429" in err_msg or "rate limit" in err_msg.lower():
+            friendly_advice = (
+                "Gemini is not configured or exhausted, and Groq has reached its rate limit. "
+                "Please add a GEMINI_API_KEY to your .env to continue, or wait for Groq's quota to reset."
+            )
+        else:
+            friendly_advice = f"AI providers failed. Error: {err_msg}"
+            
+        raise RuntimeError(friendly_advice)
 
 
 def _invoke_json(
@@ -178,7 +185,7 @@ def generate_resume(
             "existing_resume": existing_resume or "Not provided - generate from job description",
             "additional_context": additional_context or "None",
         },
-        provider=provider, temperature=0.6, max_tokens=8192,
+        provider=provider, temperature=0.6, max_tokens=4096,
     )
 
 
@@ -334,5 +341,5 @@ def smart_rebuild_resume(
         },
         provider=provider,
         temperature=0.5,
-        max_tokens=8192,
+        max_tokens=4096,
     )
