@@ -24,7 +24,14 @@ class ResumeService:
         
         try:
             # Generate via AI
-            content = ai_service.generate_resume(job_description, existing_resume, additional_context)
+            # Use specialized smart rebuild if GitHub data is detected in the input
+            if "=== GITHUB PROFILE DATA ===" in existing_resume:
+                parts = existing_resume.split("=== GITHUB PROFILE DATA ===")
+                resume_part = parts[0].replace("=== EXISTING RESUME (extracted text) ===", "").strip()
+                github_part = parts[1].strip()
+                content = ai_service.smart_rebuild_resume(resume_part, github_part, job_description, additional_context)
+            else:
+                content = ai_service.generate_resume(job_description, existing_resume, additional_context)
             
             # Check for AI errors
             if isinstance(content, dict) and "error" in content:

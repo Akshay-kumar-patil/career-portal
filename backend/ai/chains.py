@@ -314,3 +314,25 @@ def extract_jd_info(jd_text: str, provider: Optional[str] = None) -> dict:
         {"jd_text": jd_text},
         provider=provider, temperature=0.2, max_tokens=2048,
     )
+
+
+def smart_rebuild_resume(
+    existing_resume: str,
+    github_data: str,
+    job_description: str,
+    additional_context: str = "",
+    provider: Optional[str] = None,
+) -> dict:
+    """Specialized chain for rebuilding resumes using GitHub data."""
+    return _invoke_json(
+        GITHUB_SMART_REBUILD_PROMPT,
+        {
+            "existing_resume": existing_resume,
+            "github_data": github_data,
+            "job_description": job_description or "No JD provided",
+            "additional_context": additional_context or "None",
+        },
+        provider=provider,
+        temperature=0.5,
+        max_tokens=8192,
+    )

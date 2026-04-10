@@ -48,6 +48,12 @@ class AIService:
     def extract_jd(self, jd_text: str) -> dict:
         return chains.extract_jd_info(jd_text, self.provider)
 
+    def smart_rebuild_resume(self, existing_resume: str, github_data: str,
+                             job_description: str, additional_context: str = "") -> dict:
+        return chains.smart_rebuild_resume(
+            existing_resume, github_data, job_description, additional_context, self.provider
+        )
+
 
 # Default instance
 ai_service = AIService()
