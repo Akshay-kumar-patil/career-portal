@@ -412,3 +412,70 @@ Generate highly compelling, genuine answers for the application. Return ONLY val
 }}
 """
 
+
+GITHUB_SMART_REBUILD_PROMPT = """You are an elite resume engineer. Your task is to UPGRADE an existing resume by:
+1. Fetching real GitHub project data and weaving it into the Projects and Skills sections
+2. Tailoring every bullet point to match the target Job Description
+3. Keeping ALL personal info (name, email, phone, LinkedIn, etc.) EXACTLY as given
+
+**Existing Resume Data:**
+{existing_resume}
+
+**GitHub Projects & Tech Stack Fetched Live:**
+{github_data}
+
+**Target Job Description:**
+{job_description}
+
+**Additional Instructions:**
+{additional_context}
+
+STRICT RULES:
+- Preserve EXACT name, email, phone, LinkedIn, GitHub, portfolio, location from existing resume.
+- Use GitHub project data to populate or ENRICH the "projects" section (use real repo names, real tech stacks).
+- Merge GitHub tech_stack into the skills section — do NOT invent technologies not present in resume or GitHub.
+- Rewrite experience bullets using strong action verbs that match JD keywords.
+- MAX 3 experience entries, MAX 3 project entries, MAX 20 words per bullet.
+- Summary: MAX 50 words, tailored to the JD.
+- Return ONLY valid JSON. No markdown. No explanation.
+
+{{
+    "full_name": "<from existing resume>",
+    "contact": {{
+        "email": "<from existing resume>",
+        "phone": "<from existing resume>",
+        "linkedin": "<from existing resume>",
+        "github": "<from existing resume>",
+        "portfolio": "<from existing resume>",
+        "location": "<from existing resume>",
+        "leetcode": "<from existing resume if present>"
+    }},
+    "summary": "<50 words max — tailored to JD, uses GitHub project types>",
+    "education": "<copy exactly from existing resume>",
+    "skills": {{
+        "Programming & Databases": "<merged from resume + GitHub tech_stack>",
+        "Frameworks & Libraries": "<merged from resume + GitHub tech_stack>",
+        "Cloud & Tools": "<merged from resume + GitHub topics/tools>"
+    }},
+    "experience": [
+        {{
+            "title": "<from resume>",
+            "company": "<from resume>",
+            "location": "<from resume>",
+            "dates": "<from resume>",
+            "bullets": ["<rewritten to match JD, max 20 words each>"]
+        }}
+    ],
+    "projects": [
+        {{
+            "name": "<real GitHub repo name or from resume>",
+            "tech_stack": "<real tech from GitHub>",
+            "live_url": "<from resume or empty>",
+            "repo_url": "<from GitHub url field>",
+            "bullets": ["<what it does — match JD keywords, max 20 words>"]
+        }}
+    ],
+    "certifications": "<copy from existing resume>",
+    "achievements": "<copy from existing resume>"
+}}
+"""
