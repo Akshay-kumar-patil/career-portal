@@ -239,6 +239,112 @@ def delete_resume_local(resume_id: int):
     return resp.status_code == 200
 
 
+def _render_generated_resume_display():
+    """Helper to render the generated resume preview and download buttons."""
+    if "last_resume" in st.session_state:
+        r = st.session_state["last_resume"]
+        resume_id = r.get("id")
+        ats_score = r.get("ats_score") or 0
+
+        # ── ATS Score Display ──
+        st.markdown("---")
+        st.markdown("### 📊 ATS Score")
+        score_color = "#4ECDC4" if ats_score >= 70 else ("#FFD93D" if ats_score >= 40 else "#FF6B6B")
+        score_label = "Excellent" if ats_score >= 70 else ("Good" if ats_score >= 50 else ("Needs Work" if ats_score >= 30 else "Low"))
+        st.markdown(f"""
+        <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, #1A1F2E 0%, #252B3B 100%); border-radius: 16px; border: 1px solid rgba(108, 99, 255, 0.2); margin-bottom: 1rem;">
+            <div style="font-size: 3.5rem; font-weight: 700; color: {score_color}; line-height: 1;">{ats_score}</div>
+            <div style="font-size: 0.85rem; color: #8892B0; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;">ATS Score</div>
+            <div style="font-size: 1rem; font-weight: 600; color: {score_color}; margin-top: 4px;">{score_label}</div>
+            <div style="margin-top: 8px; background: #0E1117; border-radius: 8px; height: 8px; overflow: hidden;">
+                <div style="width: {ats_score}%; height: 100%; background: {score_color}; border-radius: 8px; transition: width 0.5s;"></div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Show keyword analysis
+        kw_matched = r.get("keywords_matched", [])
+        kw_missing = r.get("keywords_missing", [])
+        if kw_matched:
+            with st.expander(f"✅ Matched Keywords ({len(kw_matched)})"):
+                st.write(", ".join(kw_matched[:20]))
+        if kw_missing:
+            with st.expander(f"❌ Missing Keywords ({len(kw_missing)})"):
+                st.write(", ".join(kw_missing[:15]))
+
+        # ── PDF Preview ──
+        st.markdown("### 📄 Resume Preview")
+        pdf_cache_key = f"pdf_{resume_id}"
+        if resume_id and pdf_cache_key not in st.session_state:
+            with st.spinner("Rendering PDF preview..."):
+                st.session_state[pdf_cache_key] = api.download_resume(resume_id, "pdf")
+
+        pdf_data = st.session_state.get(pdf_cache_key) if resume_id else None
+
+        if pdf_data:
+            try:
+                # Check if it's actually HTML (common fallback)
+                is_html = pdf_data.strip().startswith(b"<!DOCTYPE") or pdf_data.strip().startswith(b"<html")
+                if is_html:
+                    st.info("ℹ️ PDF engine (WeasyPrint) requires system libraries. Showing high-fidelity HTML preview instead.")
+                    b64_html = base64.b64encode(pdf_data).decode("utf-8")
+                    st.markdown(
+                        f'<iframe src="data:text/html;base64,{b64_html}" width="100%" height="600px" style="border: 1px solid rgba(108, 99, 255, 0.3); border-radius: 8px; background: white;"></iframe>',
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    b64_pdf = base64.b64encode(pdf_data).decode("utf-8")
+                    st.markdown(
+                        f'<iframe src="data:application/pdf;base64,{b64_pdf}" width="100%" height="600px" style="border: 1px solid rgba(108, 99, 255, 0.3); border-radius: 8px;"></iframe>',
+                        unsafe_allow_html=True,
+                    )
+            except Exception as e:
+                st.error(f"Error rendering preview: {e}")
+        else:
+            # Fallback: Show resume content as formatted text
+            content = r.get("content", {})
+            if content:
+                st.markdown(f"**{content.get('full_name', '')}**")
+                # Summary stabilization
+                raw_summary = content.get("summary", "")
+                if isinstance(raw_summary, list):
+                    summary_text = " ".join(raw_summary)
+                else:
+                    summary_text = str(raw_summary)
+                if summary_text:
+                    st.write(summary_text)
+                st.caption("⚠️ PDF preview not available. Download the resume to view the full formatted version.")
+
+        # ── Download Buttons ──
+        st.markdown("### 📥 Download Resume")
+        dc1, dc2 = st.columns(2)
+        if resume_id:
+            with dc1:
+                if pdf_data:
+                    is_html = pdf_data.strip().startswith(b"<!DOCTYPE") or pdf_data.strip().startswith(b"<html")
+                    ext = "html" if is_html else "pdf"
+                    mime = "text/html" if is_html else "application/pdf"
+                    st.download_button(
+                        f"📥 Download {ext.upper()}", pdf_data,
+                        f"Resume_{resume_id}.{ext}", mime,
+                        key=f"dl_pdf_gen_helper_{resume_id}", type="primary", use_container_width=True
+                    )
+            with dc2:
+                docx_key = f"docx_{resume_id}"
+                if docx_key not in st.session_state:
+                    st.session_state[docx_key] = api.download_resume(resume_id, "docx")
+                data_docx = st.session_state.get(docx_key)
+                if data_docx:
+                    st.download_button(
+                        "📥 Download DOCX", data_docx,
+                        f"Resume_{resume_id}.docx",
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        key=f"dl_docx_gen_helper_{resume_id}", use_container_width=True
+                    )
+
+        st.success(f"✅ Resume generated successfully! ATS Score: {ats_score}/100")
+
+
 def main():
     if not is_authenticated():
         show_auth_page()
@@ -356,7 +462,162 @@ def show_resume_builder():
     st.markdown('<h1 class="main-header">📄 Resume Builder</h1>', unsafe_allow_html=True)
     st.markdown('<p class="sub-header">Generate ATS-optimized developer resumes powered by AI</p>', unsafe_allow_html=True)
 
-    tab1, tab2 = st.tabs(["✨ Generate New", "📋 My Resumes"])
+    tab1, tab_smart, tab2 = st.tabs(["✨ Generate New", "🔄 Smart Import", "📋 My Resumes"])
+
+    # ──────────────────────────────────────────────────────────────
+    # TAB: Smart Import
+    # ──────────────────────────────────────────────────────────────
+    with tab_smart:
+        st.info(
+            "📤 Upload your existing resume + paste a Job Description + add your GitHub username. "
+            "The AI will extract your experience, enrich it with real GitHub project data, and "
+            "tailor everything to the JD automatically."
+        )
+
+        si_col1, si_col2 = st.columns([1, 1])
+
+        with si_col1:
+            st.markdown("#### Step 1 — Upload Existing Resume")
+            uploaded_resume = st.file_uploader(
+                "Upload Resume (PDF / DOCX / TXT)",
+                type=["pdf", "docx", "txt"],
+                key="smart_import_resume",
+            )
+
+            extracted_text = st.session_state.get("si_extracted_text", "")
+            if uploaded_resume:
+                if st.button("📥 Extract Text", key="si_extract_btn"):
+                    with st.spinner("Extracting text from your resume…"):
+                        result = api.upload_resume_file(
+                            uploaded_resume.read(),
+                            uploaded_resume.name,
+                            uploaded_resume.type or "application/octet-stream",
+                        )
+                    if result and result.get("extracted_text"):
+                        extracted_text = result["extracted_text"]
+                        st.session_state["si_extracted_text"] = extracted_text
+                        st.success(f"✅ Extracted {len(extracted_text):,} characters from **{uploaded_resume.name}**")
+                    else:
+                        st.error("❌ Could not extract text. Try a different file format.")
+
+            if extracted_text:
+                with st.expander("📄 Preview extracted text", expanded=False):
+                    st.text(extracted_text[:2000] + ("…" if len(extracted_text) > 2000 else ""))
+
+            st.markdown("#### Step 2 — GitHub Username (Optional)")
+            user = st.session_state.get("user", {})
+            si_github = st.text_input(
+                "GitHub Username",
+                value=user.get("github_username", ""),
+                placeholder="octocat",
+                key="si_github_username",
+            )
+            si_max_repos = st.slider("Max repos to import", 3, 15, 8, key="si_max_repos")
+
+            if si_github and st.button("🐙 Fetch GitHub Data", key="si_fetch_github"):
+                with st.spinner(f"Fetching GitHub repos for **{si_github}**…"):
+                    gh_result = api.analyze_github(si_github, si_max_repos)
+                if gh_result and not gh_result.get("error"):
+                    st.session_state["si_github_data"] = gh_result
+                    repos = gh_result.get("repos", [])
+                    st.success(f"✅ Fetched **{len(repos)}** repos · Tech: {', '.join(gh_result.get('tech_stack', [])[:6])}")
+                else:
+                    st.warning("⚠️ Could not fetch GitHub data — continuing without it.")
+                    st.session_state.pop("si_github_data", None)
+
+            if "si_github_data" in st.session_state:
+                gh = st.session_state["si_github_data"]
+                with st.expander("🐙 GitHub repos preview", expanded=False):
+                    for r in gh.get("repos", [])[:5]:
+                        st.markdown(f"- **{r['name']}** ({r.get('language','')}) — {r.get('description','')}")
+
+        with si_col2:
+            st.markdown("#### Step 3 — Target Job Description")
+            si_jd = st.text_area(
+                "Paste the Job Description",
+                height=200,
+                placeholder="We are looking for a Senior Software Engineer with expertise in Python, FastAPI, and cloud platforms…",
+                key="si_jd",
+            )
+
+            st.markdown("#### Step 4 — Additional Context (Optional)")
+            si_context = st.text_area(
+                "Any extra info for the AI",
+                height=80,
+                placeholder="Highlight my open-source contributions. Prefer STAR format bullet points.",
+                key="si_context",
+            )
+
+            st.markdown("---")
+            ready = bool(extracted_text)
+            if not ready:
+                st.caption("⬅️ Upload and extract a resume first to enable generation.")
+
+            if st.button(
+                "🚀 Generate Tailored Resume",
+                type="primary",
+                use_container_width=True,
+                key="si_generate_btn",
+                disabled=not ready,
+            ):
+                if not si_jd.strip():
+                    st.warning("Please paste a Job Description so the AI can tailor the resume.")
+                else:
+                    # Build enriched context string for the AI
+                    gh_data = st.session_state.get("si_github_data", {})
+                    github_context = ""
+                    if gh_data:
+                        repos_summary = "\n".join(
+                            f"- {r['name']} ({r.get('language','')}, ⭐{r.get('stars',0)}): {r.get('description','')}"
+                            for r in gh_data.get("repos", [])
+                        )
+                        points = "\n".join(f"- {p}" for p in gh_data.get("resume_points", []))
+                        tech = ", ".join(gh_data.get("tech_stack", []))
+                        github_context = (
+                            f"\n\n=== GITHUB PROFILE DATA ===\n"
+                            f"Tech Stack: {tech}\n\n"
+                            f"Repositories:\n{repos_summary}\n\n"
+                            f"AI-Generated Resume Points from GitHub:\n{points}"
+                        )
+
+                    enriched_context = (
+                        f"=== EXISTING RESUME (extracted text) ===\n{extracted_text}"
+                        + github_context
+                        + (f"\n\n=== USER INSTRUCTIONS ===\n{si_context}" if si_context.strip() else "")
+                    )
+
+                    with st.spinner("🧠 AI is reading your resume, GitHub projects, and the JD… (this may take 2–3 minutes)"):
+                        try:
+                            result = api.generate_resume(
+                                si_jd,
+                                existing_resume=enriched_context,
+                                additional_context=si_context or "",
+                            )
+                        except requests.exceptions.ReadTimeout:
+                            st.error(
+                                "⏱️ **Request timed out.** The AI is taking longer than expected. "
+                                "Please wait 30 seconds and try again."
+                            )
+                            result = None
+                        except requests.exceptions.ConnectionError:
+                            st.error(
+                                "🔌 **Connection error.** Could not reach the backend. "
+                                "Please check your connection and try again."
+                            )
+                            result = None
+
+                    if result:
+                        st.session_state["last_resume"] = result
+                        st.session_state.pop("si_extracted_text", None)
+                        st.session_state.pop("si_github_data", None)
+                        resume_id = result.get("id")
+                        if resume_id:
+                            for k in [f"pdf_{resume_id}", f"docx_{resume_id}"]:
+                                st.session_state.pop(k, None)
+                        st.balloons()
+
+            # ── Display Result in Smart Import ──
+            _render_generated_resume_display()
 
     with tab1:
         st.info("💡 Fill in your details below. The AI agent will analyze your data and generate a professional developer resume matching top-tier formats.")
@@ -597,105 +858,7 @@ def show_resume_builder():
                                     st.session_state.pop(k, None)
 
             # ── Display Generated Resume ──
-            if "last_resume" in st.session_state:
-                r = st.session_state["last_resume"]
-                resume_id = r.get("id")
-                ats_score = r.get("ats_score") or 0
-
-                # ── ATS Score Display ──
-                st.markdown("---")
-                st.markdown("### 📊 ATS Score")
-                score_color = "#4ECDC4" if ats_score >= 70 else ("#FFD93D" if ats_score >= 40 else "#FF6B6B")
-                score_label = "Excellent" if ats_score >= 70 else ("Good" if ats_score >= 50 else ("Needs Work" if ats_score >= 30 else "Low"))
-                st.markdown(f"""
-                <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, #1A1F2E 0%, #252B3B 100%); border-radius: 16px; border: 1px solid rgba(108, 99, 255, 0.2); margin-bottom: 1rem;">
-                    <div style="font-size: 3.5rem; font-weight: 700; color: {score_color}; line-height: 1;">{ats_score}</div>
-                    <div style="font-size: 0.85rem; color: #8892B0; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;">ATS Score</div>
-                    <div style="font-size: 1rem; font-weight: 600; color: {score_color}; margin-top: 4px;">{score_label}</div>
-                    <div style="margin-top: 8px; background: #0E1117; border-radius: 8px; height: 8px; overflow: hidden;">
-                        <div style="width: {ats_score}%; height: 100%; background: {score_color}; border-radius: 8px; transition: width 0.5s;"></div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-                # Show keyword analysis
-                kw_matched = r.get("keywords_matched", [])
-                kw_missing = r.get("keywords_missing", [])
-                if kw_matched:
-                    with st.expander(f"✅ Matched Keywords ({len(kw_matched)})"):
-                        st.write(", ".join(kw_matched[:20]))
-                if kw_missing:
-                    with st.expander(f"❌ Missing Keywords ({len(kw_missing)})"):
-                        st.write(", ".join(kw_missing[:15]))
-
-                # ── PDF Preview ──
-                st.markdown("### 📄 Resume Preview")
-                pdf_cache_key = f"pdf_{resume_id}"
-                if resume_id and pdf_cache_key not in st.session_state:
-                    with st.spinner("Rendering PDF preview..."):
-                        st.session_state[pdf_cache_key] = api.download_resume(resume_id, "pdf")
-
-                pdf_data = st.session_state.get(pdf_cache_key) if resume_id else None
-
-                if pdf_data:
-                    try:
-                        # Check if it's actually HTML (common fallback)
-                        is_html = pdf_data.strip().startswith(b"<!DOCTYPE") or pdf_data.strip().startswith(b"<html")
-                        if is_html:
-                            st.info("ℹ️ PDF engine (WeasyPrint) requires system libraries. Showing high-fidelity HTML preview instead.")
-                            b64_html = base64.b64encode(pdf_data).decode("utf-8")
-                            st.markdown(
-                                f'<iframe src="data:text/html;base64,{b64_html}" width="100%" height="600px" style="border: 1px solid rgba(108, 99, 255, 0.3); border-radius: 8px; background: white;"></iframe>',
-                                unsafe_allow_html=True,
-                            )
-                        else:
-                            b64_pdf = base64.b64encode(pdf_data).decode("utf-8")
-                            st.markdown(
-                                f'<iframe src="data:application/pdf;base64,{b64_pdf}" width="100%" height="600px" style="border: 1px solid rgba(108, 99, 255, 0.3); border-radius: 8px;"></iframe>',
-                                unsafe_allow_html=True,
-                            )
-                    except Exception as e:
-                        st.error(f"Error rendering preview: {e}")
-                else:
-                    # Fallback: Show resume content as formatted text
-                    content = r.get("content", {})
-                    if content:
-                        st.markdown(f"**{content.get('full_name', '')}**")
-                        if content.get("summary"):
-                            st.write(content["summary"])
-                        st.caption("⚠️ PDF preview not available. Download the resume to view the full formatted version.")
-
-                # ── Download Buttons ──
-                st.markdown("### 📥 Download Resume")
-                dc1, dc2 = st.columns(2)
-                if resume_id:
-                    with dc1:
-                        # PDF/HTML Dynamic Download
-                        if pdf_data:
-                            # Detect if it's HTML fallback
-                            is_html = pdf_data.strip().startswith(b"<!DOCTYPE") or pdf_data.strip().startswith(b"<html")
-                            ext = "html" if is_html else "pdf"
-                            mime = "text/html" if is_html else "application/pdf"
-                            st.download_button(
-                                f"📥 Download {ext.upper()}", pdf_data,
-                                f"Resume_{resume_id}.{ext}", mime,
-                                key=f"dl_pdf_gen_{resume_id}", type="primary", use_container_width=True
-                            )
-                    with dc2:
-                        # DOCX Download
-                        docx_key = f"docx_{resume_id}"
-                        if docx_key not in st.session_state:
-                            st.session_state[docx_key] = api.download_resume(resume_id, "docx")
-                        data_docx = st.session_state.get(docx_key)
-                        if data_docx:
-                            st.download_button(
-                                "📥 Download DOCX", data_docx,
-                                f"Resume_{resume_id}.docx",
-                                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                                key=f"dl_docx_gen_{resume_id}", use_container_width=True
-                            )
-
-                st.success(f"✅ Resume generated successfully! ATS Score: {ats_score}/100")
+            _render_generated_resume_display()
 
     with tab2:
         resumes = api.list_resumes()
