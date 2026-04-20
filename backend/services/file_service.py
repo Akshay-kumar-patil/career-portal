@@ -79,7 +79,8 @@ class FileService:
             
             # Validate file size
             if not self._validate_file_size(filepath, MAX_PDF_SIZE, "PDF"):
-                os.remove(filepath)
+                if os.path.exists(filepath):
+                    os.remove(filepath)
                 raise ValueError(f"Generated PDF exceeds {MAX_PDF_SIZE} bytes limit")
             
             logger.info(f"PDF generated successfully: {filepath}")
@@ -93,8 +94,9 @@ class FileService:
                 
                 # Validate file size
                 if not self._validate_file_size(filepath, MAX_PDF_SIZE, "PDF"):
-                    os.remove(filepath)
-                    raise ValueError(f"Generated PDF exceeds {MAX_PDF_SIZE} bytes limit")
+                    if os.path.exists(filepath):
+                        os.remove(filepath)
+                    raise ValueError(f"Generated PDF exceeds {MAX_PDF_SIZE} bytes limit or creation failed")
                 
                 logger.info(f"PDF generated via pdfkit: {filepath}")
                 return filepath
