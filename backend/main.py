@@ -6,6 +6,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from backend.config import settings
 from backend.database import init_db
 from backend.ai.model_router import model_router
@@ -48,6 +49,13 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# Required by authlib for Google OAuth state/nonce storage between redirects
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.SECRET_KEY,
+    max_age=600,   # 10-minute OAuth state lifetime
 )
 
 
