@@ -33,6 +33,6 @@ services:
       - key: PORT
         value: "8501"
       - key: API_BASE_URL
-        value: "https://career-portal-m5re.onrender.com"
+        value: "https://career-portal-cxgd.onrender.com"
       - key: PYTHON_VERSION
         value: "3.11.0"
