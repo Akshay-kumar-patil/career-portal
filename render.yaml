@@ -23,6 +23,8 @@ services:
         generateValue: true
       - key: DEFAULT_MODEL_PROVIDER
         value: "gemini"
+      - key: MONGODB_URL
+        value: "mongodb+srv://akshaykumarpatil58_db_user:s0FStjjifYMfpTBO@spendlyai.tflghsc.mongodb.net/"
 
   - type: web
     name: career-platform-ui
