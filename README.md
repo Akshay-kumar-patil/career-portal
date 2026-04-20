@@ -147,6 +147,13 @@ career-platform/
 - CORS protection
 - All data stored locally (SQLite)
 
-## 📝 License
 
-MIT
+frontend link:-
+```
+https://akshay-kumar-patil-career-portal-frontendapp-gkbra3.streamlit.app/
+```
+
+Backend:-
+```
+https://career-portal-cxgd.onrender.com/
+```
