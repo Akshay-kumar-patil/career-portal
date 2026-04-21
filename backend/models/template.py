@@ -22,7 +22,7 @@ class InterviewSession(Base):
     __tablename__ = "interview_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(String(50), nullable=False)
     role = Column(String(255), nullable=False)
     company = Column(String(255), nullable=True)
     interview_type = Column(String(50), default="mixed")  # hr, technical, mixed
