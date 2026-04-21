@@ -22,14 +22,14 @@ class Application(Base):
     __tablename__ = "applications"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(String(50), nullable=False)
     company = Column(String(255), nullable=False)
     role = Column(String(255), nullable=False)
     status = Column(String(50), default=ApplicationStatus.SAVED.value)
     applied_date = Column(DateTime, nullable=True)
     jd_text = Column(Text, nullable=True)
     jd_url = Column(String(500), nullable=True)
-    resume_id = Column(Integer, ForeignKey("resumes.id"), nullable=True)
+    resume_id = Column(String(50), nullable=True)
     cover_letter_used = Column(Integer, default=0)
     salary_range = Column(String(100), nullable=True)
     location = Column(String(255), nullable=True)
