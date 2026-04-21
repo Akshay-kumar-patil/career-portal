@@ -54,7 +54,7 @@ class ResumeGenerateRequest(BaseModel):
     resume_data: Optional[ResumeDetails] = None
 
 class ResumeGenerateResponse(BaseModel):
-    id: int
+    id: str                          # MongoDB ObjectId string
     title: str
     content: Dict[str, Any]
     raw_text: str
@@ -78,7 +78,7 @@ class ResumeAnalyzeResponse(BaseModel):
 
 
 class ResumeListItem(BaseModel):
-    id: int
+    id: str                          # MongoDB ObjectId string
     title: str
     ats_score: Optional[float]
     version: int
