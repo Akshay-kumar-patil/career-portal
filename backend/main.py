@@ -90,7 +90,7 @@ def db_health_check():
     from backend.database import _init_mongo
     try:
         mongo_db = _init_mongo()
-        if mongo_db and mongo_db is not False:
+        if mongo_db is not None and mongo_db is not False:
             # Run a live ping to confirm connection is still alive
             mongo_db.client.admin.command("ping")
             return {
