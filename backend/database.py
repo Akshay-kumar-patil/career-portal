@@ -1,17 +1,20 @@
 """
-Database setup for SQLite (SQLAlchemy), ChromaDB (vector store),
-and MongoDB (pymongo) for the career.users collection.
+Database setup — MongoDB primary for users/resumes, ChromaDB for vectors.
+SQLAlchemy/SQLite kept only for legacy models (applications, referrals).
 """
 import os
 import logging
+import certifi
 import chromadb
+from pymongo import MongoClient, ASCENDING
+from pymongo.errors import ConnectionFailure, OperationFailure
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from backend.config import settings
 
 logger = logging.getLogger(__name__)
 
-# ─── SQLite / SQLAlchemy ───────────────────────────────────────────────────
+# ─── SQLite / SQLAlchemy (legacy — applications, referrals) ───────────────────
 _echo_sql = settings.DEBUG and os.environ.get("SQL_ECHO", "false").lower() == "true"
 
 engine = create_engine(
@@ -34,65 +37,83 @@ def get_db():
         db.close()
 
 
-# ─── MongoDB (pymongo) ─────────────────────────────────────────────────────
-_mongo_client = None
+# ─── MongoDB (PRIMARY for users & resumes) ─────────────────────────────────────
+_mongo_client: MongoClient | None = None
 _mongo_db = None
 
 
 def _init_mongo():
-    """Lazily initialise the MongoDB client; degrade gracefully on failure."""
+    """Initialise MongoDB client; creates indexes on first run."""
     global _mongo_client, _mongo_db
     if _mongo_db is not None:
         return _mongo_db
-    try:
-        from pymongo import MongoClient
-        from pymongo.errors import ConnectionFailure
 
+    try:
         _mongo_client = MongoClient(
             settings.MONGODB_URL,
-            serverSelectionTimeoutMS=5000,
-            connectTimeoutMS=5000,
+            serverSelectionTimeoutMS=10_000,
+            connectTimeoutMS=10_000,
+            socketTimeoutMS=20_000,
+            tlsCAFile=certifi.where(),          # Fixes SSL on Windows
         )
-        # Force a connection to detect early failures
-        _mongo_client.admin.command("ping")
+        _mongo_client.admin.command("ping")     # Fail fast if unreachable
         _mongo_db = _mongo_client[settings.MONGODB_DB_NAME]
-        logger.info("MongoDB connected  →  db=%s", settings.MONGODB_DB_NAME)
+
+        # ── Indexes ────────────────────────────────────────────────────────────
+        _mongo_db["authentication"].create_index(
+            [("email", ASCENDING)], unique=True, background=True
+        )
+        _mongo_db["resumes"].create_index(
+            [("user_id", ASCENDING)], background=True
+        )
+        _mongo_db["resumes"].create_index(
+            [("user_id", ASCENDING), ("is_active", ASCENDING)], background=True
+        )
+
+        logger.info("✅ MongoDB connected  →  db=%s", settings.MONGODB_DB_NAME)
     except Exception as exc:
-        logger.warning("MongoDB unavailable — user sync disabled. Error: %s", exc)
-        _mongo_db = False
+        logger.error("❌ MongoDB connection failed: %s", exc)
+        _mongo_db = False   # sentinel: don't retry in the same process
+
     return _mongo_db
 
 
 def get_mongo_db():
-    """FastAPI dependency — yields the MongoDB database object (or None)."""
+    """FastAPI dependency — returns the MongoDB database object or raises."""
     db = _init_mongo()
-    return db if db else None
+    if db is None or db is False:
+        raise RuntimeError("MongoDB is unavailable. Check MONGODB_URL in .env")
+    return db
 
 
 def get_users_collection():
-    """Return the authentication collection, or None if Mongo is unavailable."""
+    """Return the 'authentication' collection."""
     db = _init_mongo()
-    if not db:
+    if db is None or db is False:
         return None
     return db["authentication"]
 
 
-# ─── ChromaDB ─────────────────────────────────────────────────────────────
+def get_resumes_collection():
+    """Return the 'resumes' collection."""
+    db = _init_mongo()
+    if db is None or db is False:
+        return None
+    return db["resumes"]
+
+
+# ─── ChromaDB ─────────────────────────────────────────────────────────────────
 chroma_client = None
 
 
 def _init_chroma_client():
-    """Initialize Chroma lazily and degrade gracefully on local disk issues."""
     global chroma_client
     if chroma_client is not None:
         return chroma_client
     try:
         chroma_client = chromadb.PersistentClient(path=settings.CHROMA_PERSIST_DIR)
     except Exception as e:
-        logger.warning(
-            "ChromaDB unavailable; semantic search features will be disabled. Error: %s",
-            e,
-        )
+        logger.warning("ChromaDB unavailable; semantic search disabled. Error: %s", e)
         chroma_client = False
     return chroma_client
 
@@ -107,9 +128,12 @@ def get_chroma_collection(name: str = "resumes"):
     )
 
 
+# ─── Startup initialiser ──────────────────────────────────────────────────────
 def init_db():
-    from backend.models import user, resume, application, referral, template  # noqa
+    """Called at app startup. Initialises MongoDB, SQLite legacy tables, ChromaDB."""
+    # Legacy SQLite tables (applications, referrals, templates)
+    from backend.models import application, referral, template  # noqa: F401
     Base.metadata.create_all(bind=engine)
+
     _init_chroma_client()
     _init_mongo()
-
