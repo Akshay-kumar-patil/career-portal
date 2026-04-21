@@ -1,6 +1,5 @@
 """Resume analyzer API routes."""
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from backend.models.user import User
 from backend.schemas.resume import ResumeAnalyzeRequest
 from backend.utils.auth import get_current_user
 from backend.services.analyzer_service import analyzer_service
@@ -10,7 +9,7 @@ router = APIRouter(prefix="/api/analyzer", tags=["Analyzer"])
 
 
 @router.post("/analyze")
-def analyze_resume(req: ResumeAnalyzeRequest, current_user: User = Depends(get_current_user)):
+def analyze_resume(req: ResumeAnalyzeRequest, current_user: dict = Depends(get_current_user)):
     try:
         result = analyzer_service.analyze(req.resume_text, req.job_description or "")
         return result
@@ -21,7 +20,7 @@ def analyze_resume(req: ResumeAnalyzeRequest, current_user: User = Depends(get_c
 @router.post("/upload")
 async def upload_and_analyze(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
     """Upload a resume file (PDF/DOCX) and get analysis."""
     content = await file.read()
@@ -34,7 +33,7 @@ async def upload_and_analyze(
 
 
 @router.post("/quick-score")
-def quick_score(req: ResumeAnalyzeRequest, current_user: User = Depends(get_current_user)):
+def quick_score(req: ResumeAnalyzeRequest, current_user: dict = Depends(get_current_user)):
     """Quick keyword-based scoring without AI."""
     if not req.job_description:
         raise HTTPException(status_code=400, detail="Job description required for quick score")
@@ -42,7 +41,7 @@ def quick_score(req: ResumeAnalyzeRequest, current_user: User = Depends(get_curr
 
 
 @router.post("/simulate")
-def simulate_recruiter(req: ResumeAnalyzeRequest, current_user: User = Depends(get_current_user)):
+def simulate_recruiter(req: ResumeAnalyzeRequest, current_user: dict = Depends(get_current_user)):
     """Simulate a recruiter reviewing a resume against a JD."""
     try:
         return analyzer_service.simulate_recruiter(req.resume_text, req.job_description or "")
