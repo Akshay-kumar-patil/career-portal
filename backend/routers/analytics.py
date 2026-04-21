@@ -3,18 +3,17 @@ from datetime import datetime, timedelta
 from collections import Counter
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from backend.database import get_db
-from backend.models.user import User
+from backend.database import get_db, get_resumes_collection
 from backend.models.application import Application
-from backend.models.resume import Resume
 from backend.utils.auth import get_current_user
 
 router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
 
 
 @router.get("/summary")
-def get_summary(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    apps = db.query(Application).filter(Application.user_id == current_user.id).all()
+def get_summary(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    user_id = current_user["id"]
+    apps = db.query(Application).filter(Application.user_id == user_id).all()
     total = len(apps)
 
     status_counts = Counter(a.status for a in apps)
@@ -37,16 +36,18 @@ def get_summary(current_user: User = Depends(get_current_user), db: Session = De
     company_counts = Counter(a.company for a in apps)
     top_companies = [{"company": c, "count": n} for c, n in company_counts.most_common(10)]
 
-    # Resume performance
-    resumes = db.query(Resume).filter(Resume.user_id == current_user.id, Resume.is_active == 1).all()
+    # Resume performance — now from MongoDB
+    resume_col = get_resumes_collection()
+    resumes = list(resume_col.find({"user_id": user_id, "is_active": True})) if resume_col is not None else []
     resume_perf = []
     for r in resumes:
-        linked_apps = [a for a in apps if a.resume_id == r.id]
+        r_id = str(r["_id"])
+        linked_apps = [a for a in apps if getattr(a, "resume_id", None) == r_id]
         responded_apps = [a for a in linked_apps if a.status not in ("saved", "applied")]
         resume_perf.append({
-            "id": r.id,
-            "title": r.title,
-            "ats_score": r.ats_score,
+            "id": r_id,
+            "title": r.get("title", ""),
+            "ats_score": r.get("ats_score"),
             "applications": len(linked_apps),
             "responses": len(responded_apps),
             "response_rate": round(len(responded_apps) / max(len(linked_apps), 1) * 100, 1),
