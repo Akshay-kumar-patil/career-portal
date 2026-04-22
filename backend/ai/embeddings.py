@@ -28,16 +28,11 @@ def get_embedding_model():
 
 
 def generate_embeddings(texts: List[str]) -> Optional[List[List[float]]]:
-    """Generate embeddings for a list of texts."""
-    model = get_embedding_model()
-    if model is None:
-        return None
-    try:
-        embeddings = model.encode(texts, show_progress_bar=False)
-        return embeddings.tolist()
-    except Exception as e:
-        logger.error(f"Embedding generation error: {e}")
-        return None
+    """Generate embeddings for a list of texts. MOCKED to prevent Render OOM."""
+    # To run on a 512MB RAM free tier, we cannot load PyTorch and SentenceTransformers.
+    # It causes the Uvicorn worker to be OOM-killed, leading to 502 Bad Gateway.
+    logger.info("MOCKING embedding generation to save RAM and prevent 502 crash.")
+    return [[0.01] * 384 for _ in texts]
 
 
 def store_resume_embedding(
