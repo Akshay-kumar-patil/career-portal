@@ -105,6 +105,8 @@ def get_ai_status() -> Optional[dict]:
         return None
 
 
+import time
+
 # --- Resume ---
 def generate_resume(
     job_description: str,
@@ -122,13 +124,46 @@ def generate_resume(
         payload["resume_data"] = resume_data
     if template_id:
         payload["template_id"] = template_id
+        
+    # Start the async job
     resp = requests.post(
         f"{BASE_URL}/api/resume/generate",
         json=payload,
         headers=_headers(),
-        timeout=_TIMEOUT_AI,
+        timeout=10,
     )
-    return _handle_response(resp)
+    
+    start_resp = _handle_response(resp)
+    if not start_resp or "job_id" not in start_resp:
+        return None
+        
+    job_id = start_resp["job_id"]
+    
+    # Poll for completion (avoids Render 100s proxy timeout)
+    while True:
+        try:
+            status_resp = requests.get(
+                f"{BASE_URL}/api/resume/generate/status/{job_id}",
+                headers=_headers(),
+                timeout=5
+            )
+            data = _handle_response(status_resp)
+            if not data:
+                return None
+                
+            if data["status"] == "completed":
+                return data["result"]
+            elif data["status"] == "failed":
+                st.error(f"Generation failed: {data.get('error', 'Unknown Error')}")
+                return None
+                
+            time.sleep(3)
+        except requests.exceptions.ReadTimeout:
+            # If polling times out, just retry
+            time.sleep(2)
+        except Exception as e:
+            st.error(f"Error checking job status: {str(e)}")
+            return None
 
 def preview_resume(resume_id: int) -> str:
     resp = requests.get(
