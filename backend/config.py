@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     # Google OAuth
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
-    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
-    FRONTEND_URL: str = "http://localhost:8501"
+    GOOGLE_REDIRECT_URI: str = "https://career-portal-cxgd.onrender.com/api/auth/google/callback"
+    FRONTEND_URL: str = "https://akshay-kumar-patil-career-portal-frontendapp-gkbra3.streamlit.app"
 
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-2.5-flash"  # Updated to latest Gemini model
@@ -74,7 +74,7 @@ class Settings(BaseSettings):
 
     # FIX: typed as List[str] so CORS_ORIGINS works correctly with middleware
     CORS_ORIGINS: List[str] = [
-        "http://localhost:8501",
+        "https://akshay-kumar-patil-career-portal-frontendapp-gkbra3.streamlit.app",
         "http://localhost:8502",
         "http://localhost:3000",
         "https://career-portal-m5re.onrender.com",
