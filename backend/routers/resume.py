@@ -155,67 +155,88 @@ class ValidatedResumeGenerateRequest(BaseModel):
 
 # ─── Routes ────────────────────────────────────────────────────────────────────
 
-@router.post("/generate", response_model=ResumeGenerateResponse)
-def generate_resume(
+from fastapi import BackgroundTasks
+import uuid
+
+# In-memory store for long-running AI jobs (bypasses Render 100s timeout)
+_job_store = {}
+
+@router.post("/generate", response_model=dict)
+def generate_resume_start(
     req: ValidatedResumeGenerateRequest,
+    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
 ):
-    try:
-        user_id = current_user["id"]
+    """Start resume generation in the background to avoid proxy timeout."""
+    user_id = current_user["id"]
+    allowed, message = RateLimitChecker.check_limit(user_id, "resume_generation")
+    if not allowed:
+        raise HTTPException(status_code=429, detail=message)
 
-        allowed, message = RateLimitChecker.check_limit(user_id, "resume_generation")
-        if not allowed:
-            raise HTTPException(status_code=429, detail=message)
+    job_id = str(uuid.uuid4())
+    _job_store[job_id] = {"status": "processing", "result": None, "error": None}
 
-        context_str = req.existing_resume or ""
-        if req.resume_data:
-            context_str += "\n\nUser Data Input:\n" + json.dumps(req.resume_data, indent=2)
+    def _do_background_generation(j_id: str, u_id: str, request_obj: ValidatedResumeGenerateRequest, c_user: dict):
+        try:
+            context_str = request_obj.existing_resume or ""
+            if request_obj.resume_data:
+                context_str += "\n\nUser Data Input:\n" + json.dumps(request_obj.resume_data, indent=2)
 
-        submitted_resume_data = _parsed_resume_input(req)
+            submitted_resume_data = _parsed_resume_input(request_obj)
 
-        resume = resume_service.generate(
-            user_id=user_id,
-            job_description=req.job_description,
-            existing_resume=context_str,
-            template_id=req.template_id,
-            additional_context=req.additional_context or "",
-        )
+            resume = resume_service.generate(
+                user_id=u_id,
+                job_description=request_obj.job_description,
+                existing_resume=context_str,
+                template_id=request_obj.template_id,
+                additional_context=request_obj.additional_context or "",
+            )
 
-        content = resume.get("content", {})
-        if not isinstance(content, dict):
-            try:
-                content = json.loads(content)
-            except Exception:
-                content = {"summary": str(content)}
+            content = resume.get("content", {})
+            if not isinstance(content, dict):
+                try:
+                    content = json.loads(content)
+                except Exception:
+                    content = {"summary": str(content)}
 
-        content = _merge_resume_content(content, submitted_resume_data, current_user)
+            content = _merge_resume_content(content, submitted_resume_data, c_user)
 
-        # Persist merged content back
-        from backend.database import get_resumes_collection
-        from bson import ObjectId
-        get_resumes_collection().update_one(
-            {"_id": ObjectId(resume["id"])},
-            {"$set": {"content": content, "raw_text": json.dumps(content, indent=2)}},
-        )
+            # Persist merged content back
+            from backend.database import get_resumes_collection
+            from bson import ObjectId
+            get_resumes_collection().update_one(
+                {"_id": ObjectId(resume["id"])},
+                {"$set": {"content": content, "raw_text": json.dumps(content, indent=2)}},
+            )
 
-        return ResumeGenerateResponse(
-            id=resume["id"],
-            title=resume["title"],
-            content=content,
-            raw_text=json.dumps(content, indent=2),
-            ats_score=resume.get("ats_score"),
-            keywords_matched=resume.get("keywords_matched") or [],
-            keywords_missing=resume.get("keywords_missing") or [],
-            version=resume.get("version", 1),
-        )
+            result_obj = ResumeGenerateResponse(
+                id=resume["id"],
+                title=resume["title"],
+                content=content,
+                raw_text=json.dumps(content, indent=2),
+                ats_score=resume.get("ats_score"),
+                keywords_matched=resume.get("keywords_matched") or [],
+                keywords_missing=resume.get("keywords_missing") or [],
+                version=resume.get("version", 1),
+            )
+            _job_store[j_id]["status"] = "completed"
+            _job_store[j_id]["result"] = result_obj.dict()
 
-    except HTTPException:
-        raise
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Validation error: {e}")
-    except Exception as e:
-        logger.error("Resume generation failed: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Resume generation failed: {e}")
+        except Exception as e:
+            logger.error(f"Background resume generation failed: {e}", exc_info=True)
+            _job_store[j_id]["status"] = "failed"
+            _job_store[j_id]["error"] = str(e)
+
+    background_tasks.add_task(_do_background_generation, job_id, user_id, req, current_user)
+    return {"job_id": job_id, "status": "processing"}
+
+@router.get("/generate/status/{job_id}", response_model=dict)
+def get_generation_status(job_id: str, current_user: dict = Depends(get_current_user)):
+    """Check the status of a background resume generation job."""
+    job = _job_store.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
 
 
 @router.get("/list", response_model=list[ResumeListItem])
