@@ -335,15 +335,15 @@ def _render_generated_resume_display(key_suffix: str = ""):
                 is_html = pdf_data.strip().startswith(b"<!DOCTYPE") or pdf_data.strip().startswith(b"<html")
                 if is_html:
                     st.info("ℹ️ PDF engine (WeasyPrint) requires system libraries. Showing high-fidelity HTML preview instead.")
-                    b64_html = base64.b64encode(pdf_data).decode("utf-8")
-                    st.markdown(
-                        f'<iframe src="data:text/html;base64,{b64_html}" width="100%" height="600px" style="border: 1px solid rgba(108, 99, 255, 0.3); border-radius: 8px; background: white;"></iframe>',
-                        unsafe_allow_html=True,
-                    )
+                    import streamlit.components.v1 as components
+                    html_str = pdf_data.decode("utf-8")
+                    components.html(html_str, height=600, scrolling=True)
                 else:
                     b64_pdf = base64.b64encode(pdf_data).decode("utf-8")
                     st.markdown(
-                        f'<iframe src="data:application/pdf;base64,{b64_pdf}" width="100%" height="600px" style="border: 1px solid rgba(108, 99, 255, 0.3); border-radius: 8px;"></iframe>',
+                        f'<object data="data:application/pdf;base64,{b64_pdf}" type="application/pdf" width="100%" height="600px" style="border: 1px solid rgba(108, 99, 255, 0.3); border-radius: 8px;">'
+                        f'<p>It appears your browser has blocked the inline PDF preview. Please use the download button below to view it.</p>'
+                        f'</object>',
                         unsafe_allow_html=True,
                     )
             except Exception as e:
