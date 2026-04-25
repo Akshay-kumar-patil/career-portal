@@ -190,7 +190,7 @@ def download_resume(resume_id: int, fmt: str) -> Optional[bytes]:
     resp = requests.get(
         f"{BASE_URL}/api/resume/{resume_id}/download/{fmt}",
         headers=_headers(),
-        timeout=30,
+        timeout=_TIMEOUT_AI,
     )
     if resp.status_code == 200:
         return resp.content
@@ -271,7 +271,7 @@ def download_cover_letter(content: dict, fmt: str) -> Optional[bytes]:
         f"{BASE_URL}/api/cover-letter/download/{fmt}",
         json={"content": content},
         headers=_headers(),
-        timeout=30,
+        timeout=_TIMEOUT_AI,
     )
     if resp.status_code == 200:
         return resp.content
