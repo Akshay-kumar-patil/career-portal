@@ -1,159 +1,259 @@
-# 🚀 Career Automation & Job Intelligence Platform
+# Career Command
 
-An AI-powered career operating system that automates the entire job search lifecycle — resume generation, analysis, job tracking, mock interviews, and data-driven insights.
+Career Command is an AI-powered career operating system for modern job seekers. It goes far beyond resume creation by helping users build stronger application materials, evaluate job fit, track opportunities, prepare for interviews, manage referrals, and improve outcomes with analytics.
 
-## ✨ Features
+If "resume builder" sounds too small for what this project does, that is because the platform already behaves more like a personal career command center.
 
-| Feature | Description |
-|---------|-------------|
-| 📄 **Resume Builder** | AI-generated, ATS-optimized resumes with keyword alignment |
-| 🔍 **Resume Analyzer** | ATS scoring (0-100), section feedback, keyword gap analysis |
-| ✉️ **Cover Letter Generator** | Personalized cover letters with tone options (formal/concise/creative) |
-| 🤖 **AI Recruiter Simulator** | Predict shortlist/reject decisions with reasoning |
-| 🎤 **Mock Interview** | AI-generated HR & technical questions with answer evaluation |
-| 📊 **Skill Gap Analyzer** | Compare skills vs JD, get learning roadmap |
-| 🎯 **Job Tracker** | Track applications (Saved → Applied → Interview → Offer) |
-| 👥 **Referral Manager** | Track referral contacts and status |
-| 🧪 **Resume A/B Testing** | Compare resume versions and track performance |
-| 📈 **Analytics Dashboard** | Response rates, trends, resume performance metrics |
-| 📧 **Email Generator** | Cold emails, referral requests, follow-ups |
-| 🐙 **GitHub Analyzer** | Extract resume bullet points from repos |
-| 📑 **JD Extraction Engine** | Extract skills/requirements from PDFs, text, URLs |
-| 🧠 **Personal Memory** | Context-aware AI using your profile and history |
+## What This Project Is
 
-## 🧠 AI Architecture
+This project combines a FastAPI backend, a Streamlit frontend, and a multi-provider AI layer to support the full job search workflow in one place.
 
-**Hybrid Multi-Model System** with automatic fallback:
+Core product areas:
 
-- ☁️ **Google Gemini** — Primary cloud AI, fast & generous free tier
-- ⚡ **Groq (llama-3.3-70b-versatile)** — Ultra-fast fallback, free tier
-- ☁️ **OpenAI GPT** — Optional cloud-based alternative
-- 🔄 **Auto-routing** — Detects connectivity and routes to best available model
-- 💰 **Cost tracking** — Monitor API usage and costs
+- Resume generation with ATS-oriented content and keyword alignment
+- Resume analysis with scoring, feedback, and missing keyword detection
+- Cover letter generation with different tones
+- Job application tracking across the pipeline
+- Referral tracking and follow-up support
+- Mock interview generation and answer evaluation
+- Skill gap analysis with roadmap suggestions
+- Outreach email generation for cold emails, referrals, follow-ups, and thank-you notes
+- GitHub project analysis for resume-ready bullet points
+- Job description extraction from text, files, and supported sources
+- Analytics to measure application activity and performance
+- AI recruiter simulation to estimate shortlist vs rejection outcomes
+- A/B comparison of resume variants
 
-## 🏗️ Tech Stack
+## Why It Matters
 
-- **Backend:** FastAPI + SQLAlchemy + SQLite
-- **Frontend:** Streamlit (dark theme, modern UI)
-- **AI:** LangChain + Google Gemini + Groq (llama-3.3-70b)
-- **Vector DB:** ChromaDB (semantic search)
-- **Embeddings:** sentence-transformers (offline)
-- **File Gen:** WeasyPrint (PDF), python-docx (DOCX)
+Most tools in this space solve one isolated problem:
 
-## 🚀 Quick Start
+- build a resume
+- write a cover letter
+- track applications
+- practice interviews
 
-### 1. Prerequisites
+This project brings those steps together into one workflow so a user can move from preparation to application to improvement without switching systems.
 
-- Python 3.10+
-- Gemini API key (free at https://aistudio.google.com)
-- (Optional) Groq API key (free at https://console.groq.com) for ultra-fast fallback
-- (Optional) OpenAI API key for cloud AI
+That makes the platform more valuable as:
 
-### 2. Setup
+- a portfolio project
+- a startup MVP
+- a SaaS foundation
+- a career-tech product demo
+- an internal productivity tool for career coaches or placement teams
 
-```bash
-cd career-platform
+## Product Positioning
 
-# Create virtual environment
-python -m venv venv
-venv\Scripts\activate    # Windows
-# source venv/bin/activate  # Linux/Mac
+Best recommended product name:
 
-# Install dependencies
-pip install -r requirements.txt
+**Career Command**
 
-# Configure environment
-copy .env.example .env   # Windows
-# cp .env.example .env   # Linux/Mac
-# Edit .env with your API keys
+Why this name fits:
+
+- It sounds larger and more important than "Resume Builder"
+- It suggests control, direction, and decision-making
+- It fits the platform's broad scope across resumes, interviews, tracking, and analytics
+- It is easy to remember and feels like software people can rely on daily
+
+More naming ideas are in [docs/project-positioning.md](/D:/aiml/career-platform/docs/project-positioning.md).
+
+## Feature Overview
+
+| Area | What it does |
+| --- | --- |
+| Resume Builder | Generates structured resumes tailored to job descriptions |
+| Resume Analyzer | Scores resumes and highlights strengths, gaps, and keyword coverage |
+| Cover Letter Generator | Produces role-specific and tone-controlled cover letters |
+| Job Tracker | Tracks saved, applied, interviewing, offered, and rejected opportunities |
+| Referral Manager | Tracks referral contacts, outreach, and status |
+| Mock Interview | Generates interview questions and reviews answers |
+| Skill Gap Analyzer | Compares current skills against target job requirements |
+| Email Generator | Creates career outreach and follow-up emails |
+| GitHub Analyzer | Converts repository work into resume-friendly achievements |
+| JD Extraction Engine | Pulls useful hiring signals from job descriptions |
+| Analytics Dashboard | Measures conversion, response rate, and application momentum |
+| AI Recruiter Simulator | Predicts recruiter reaction and explains likely outcomes |
+| Resume A/B Testing | Compares multiple resume versions and performance signals |
+| Personal Memory Layer | Uses user profile and history for more contextual outputs |
+
+## Architecture
+
+### Frontend
+
+- Streamlit application in [frontend/app.py](/D:/aiml/career-platform/frontend/app.py)
+- Multi-page interface with authentication, dashboards, editors, and analysis tools
+- API client helpers in [frontend/utils/api_client.py](/D:/aiml/career-platform/frontend/utils/api_client.py)
+
+### Backend
+
+- FastAPI application in [backend/main.py](/D:/aiml/career-platform/backend/main.py)
+- Router-based API structure under [backend/routers](/D:/aiml/career-platform/backend/routers)
+- Service layer for business logic under [backend/services](/D:/aiml/career-platform/backend/services)
+- ORM models under [backend/models](/D:/aiml/career-platform/backend/models)
+- Pydantic schemas under [backend/schemas](/D:/aiml/career-platform/backend/schemas)
+
+### AI Layer
+
+- Prompt and chain logic under [backend/ai](/D:/aiml/career-platform/backend/ai)
+- Multi-provider routing with Gemini, Groq, and optional OpenAI
+- Automatic fallback and provider status reporting
+- Embedding-based support through sentence-transformers and ChromaDB
+
+### Data and Storage
+
+- SQLite for relational application data
+- MongoDB configuration for user-related storage and connectivity checks
+- ChromaDB for semantic retrieval and embeddings
+- Local file generation and storage under `data/`
+
+## Technology Stack
+
+- Backend: FastAPI, SQLAlchemy, Pydantic
+- Frontend: Streamlit, Plotly, Pandas
+- AI orchestration: LangChain
+- AI providers: Google Gemini, Groq, OpenAI
+- Vector search: ChromaDB
+- Embeddings: sentence-transformers
+- Auth and security: JWT, bcrypt, Authlib, session middleware
+- File generation: Jinja2, python-docx, WeasyPrint, PyPDF2
+
+## Project Structure
+
+```text
+career-platform/
+|-- backend/
+|   |-- ai/                 # prompts, routing, chains, embeddings
+|   |-- models/             # database models
+|   |-- routers/            # API route groups
+|   |-- schemas/            # request/response schemas
+|   |-- services/           # business logic
+|   |-- utils/              # auth, parsing, helpers
+|   |-- config.py           # environment-based settings
+|   |-- database.py         # DB initialization and helpers
+|   `-- main.py             # FastAPI entry point
+|-- frontend/
+|   |-- utils/              # frontend API and session helpers
+|   `-- app.py              # Streamlit UI
+|-- templates/              # resume templates
+|-- data/                   # generated files, uploads, local storage
+|-- docs/                   # product and branding notes
+|-- requirements.txt
+|-- docker-compose.yml
+`-- README.md
 ```
 
-### 3. Run
+## Local Setup
+
+### Prerequisites
+
+- Python 3.10+
+- A virtual environment tool
+- At least one AI provider key for full functionality
+
+Recommended provider setup:
+
+- Gemini API key for the default experience
+- Groq API key for fast fallback
+- OpenAI API key if you want OpenAI-based generation
+
+### Installation
 
 ```bash
-# Terminal 1 — Start Backend
-uvicorn backend.main:app --reload --port 8000
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.example .env
+```
 
-# Terminal 2 — Start Frontend
+Then update `.env` with the keys and values you want to use.
+
+### Run Locally
+
+Backend:
+
+```bash
+uvicorn backend.main:app --reload --port 8000
+```
+
+Frontend:
+
+```bash
 streamlit run frontend/app.py
 ```
 
-### 4. Access
+Default local URLs:
 
-- **Frontend:** http://localhost:8501
-- **API Docs:** http://localhost:8000/docs
-- **API ReDoc:** http://localhost:8000/redoc
+- Frontend: `http://localhost:8501`
+- API docs: `http://localhost:8000/docs`
+- API redoc: `http://localhost:8000/redoc`
 
-### 5. Docker (optional)
+## Environment Notes
 
-```bash
-docker-compose up --build
-```
+Important configuration lives in [backend/config.py](/D:/aiml/career-platform/backend/config.py).
 
-## 📁 Project Structure
+Key settings include:
 
-```
-career-platform/
-├── backend/                  # FastAPI backend
-│   ├── main.py              # App entry point
-│   ├── config.py            # Settings
-│   ├── database.py          # SQLite + ChromaDB
-│   ├── ai/                  # AI engine
-│   │   ├── model_router.py  # Hybrid model routing
-│   │   ├── chains.py        # LangChain pipelines
-│   │   ├── prompts.py       # Prompt templates
-│   │   └── embeddings.py    # Vector embeddings
-│   ├── models/              # ORM models
-│   ├── schemas/             # Pydantic schemas
-│   ├── routers/             # API endpoints
-│   ├── services/            # Business logic
-│   └── utils/               # Helpers
-├── frontend/                 # Streamlit UI
-│   ├── app.py               # Main app (all 14 pages)
-│   └── utils/               # API client & session
-├── templates/                # HTML resume templates
-├── data/                     # SQLite DB, uploads, generated files
-├── requirements.txt
-├── Dockerfile
-├── docker-compose.yml
-└── .env.example
-```
+- app name and version
+- JWT secret and token expiry
+- SQLite path
+- MongoDB URL and database name
+- AI provider keys and model names
+- upload and generated file directories
+- cleanup retention windows
+- CORS origins
 
-## 🔌 API Endpoints
+## API Surface
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/register` | Register new user |
-| POST | `/api/auth/login` | Login |
-| POST | `/api/resume/generate` | Generate AI resume |
-| GET | `/api/resume/list` | List user resumes |
-| POST | `/api/analyzer/analyze` | Analyze resume |
-| POST | `/api/cover-letter/generate` | Generate cover letter |
-| POST/GET | `/api/applications/` | CRUD applications |
-| POST/GET | `/api/referrals/` | CRUD referrals |
-| POST | `/api/interview/generate` | Generate interview Q's |
-| POST | `/api/interview/evaluate` | Evaluate answer |
-| POST | `/api/skills/analyze-gap` | Skill gap analysis |
-| POST | `/api/email/generate` | Generate email |
-| POST | `/api/github/analyze` | Analyze GitHub |
-| POST | `/api/extract/jd` | Extract JD info |
-| GET | `/api/analytics/summary` | Career analytics |
-| GET | `/api/ai/status` | AI system status |
+Primary route groups exposed by the backend:
 
-## 🔒 Security
+- `/api/auth`
+- `/api/resume`
+- `/api/analyzer`
+- `/api/cover-letter`
+- `/api/applications`
+- `/api/referrals`
+- `/api/interview`
+- `/api/skills`
+- `/api/analytics`
+- `/api/email`
+- `/api/github`
+- `/api/extract`
+- `/api/ai/status`
 
-- JWT-based authentication
-- Bcrypt password hashing
-- CORS protection
-- All data stored locally (SQLite)
+Operational endpoints:
 
+- `/`
+- `/health`
+- `/health/db`
+- `/docs`
+- `/redoc`
 
-frontend link:-
-```
-https://akshay-kumar-patil-career-portal-frontendapp-gkbra3.streamlit.app/
-```
+## Deployment Links
 
-Backend:-
-```
-https://career-portal-cxgd.onrender.com/
-```
+Frontend:
+
+- [Streamlit app](https://akshay-kumar-patil-career-portal-frontendapp-gkbra3.streamlit.app/)
+
+Backend:
+
+- [Render API](https://career-portal-cxgd.onrender.com/)
+
+## Who This Is For
+
+This project is well suited for:
+
+- students preparing for internships and placements
+- working professionals changing roles
+- job seekers managing high-volume applications
+- bootcamp graduates building a career-tech portfolio
+- recruiters or mentors who want a structured candidate support tool
+
+## Next Documentation Improvements
+
+If you want, the next useful step would be adding:
+
+- a full API reference table by route file
+- screenshots for each major frontend module
+- a contributor guide for local development and deployment
+- a product pitch section for using this in interviews or demos
