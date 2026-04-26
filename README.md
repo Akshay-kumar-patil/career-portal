@@ -1,8 +1,8 @@
-# Career Command
+# CareerPilot
 
-Career Command is an AI-powered career operating system for modern job seekers. It goes far beyond resume creation by helping users build stronger application materials, evaluate job fit, track opportunities, prepare for interviews, manage referrals, and improve outcomes with analytics.
+CareerPilot is an AI-powered career operating system for modern job seekers. It goes far beyond resume creation by helping users build stronger application materials, evaluate job fit, track opportunities, prepare for interviews, manage referrals, and improve outcomes with analytics.
 
-If "resume builder" sounds too small for what this project does, that is because the platform already behaves more like a personal career command center.
+If "resume builder" sounds too small for what this project does, that is because the platform already behaves more like a personal CareerPilot center.
 
 ## What This Project Is
 
@@ -47,7 +47,7 @@ That makes the platform more valuable as:
 
 Best recommended product name:
 
-**Career Command**
+**CareerPilot**
 
 Why this name fits:
 
