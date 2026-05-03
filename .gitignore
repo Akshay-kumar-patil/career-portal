@@ -36,3 +36,22 @@ Thumbs.db
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary / throwaway scripts
+temp.py
+temp_*.py
+_patch_*.py
+
+# Test output files
+test_out.txt
+test_err.txt
+
+# One-off scripts (migration, verification, etc.)
+migrate_*.py
+verify_*.py
+scripts/clear_users.py
