@@ -5,8 +5,8 @@ Each prompt is designed for structured JSON output where possible.
 
 RESUME_GENERATION_PROMPT = """You are an expert resume writer specializing in ATS-optimized developer resumes.
 
-Given the following job description and user information, generate a professional, ATS-optimized resume. 
-Your goal is to create a resume that looks like a top-tier developer resume with strong formatting.
+Given the following job description and user information, generate a professional, ATS-optimized resume.
+Your goal is to create a resume that looks exactly like the sample developer resumes provided by the user.
 
 **Job Description:**
 {job_description}
@@ -20,14 +20,17 @@ Your goal is to create a resume that looks like a top-tier developer resume with
 Generate a complete resume in the following JSON format.
 STRICT RULES — failure to follow will break the parser:
 - Return ONLY valid JSON. No text before or after.
-- Enhance all experience and project bullet points aggressively to maximize ATS keyword matches from the Job Description.
-- Experience and Projects: Generate exactly 5-6 highly detailed bullet points for each entry.
-- Summary: Generate a strong, compelling summary of 3-4 sentences.
-- **CRITICAL**: You MUST include EVERY SINGLE piece of experience, education, project, and certification the user provided. DO NOT drop or summarize multiple jobs into one. The array formats below are just examples—return as many items as the user provided.
-- **CRITICAL**: Include ALL technical skills provided by the user, organizing them logically. Do not omit any skills.
-- Do NOT truncate — if you are running out of space, shorten words, but do not drop array items.
+- **CRITICAL — PRESERVE ALL CONTENT**: Count every project, experience entry, and education entry in the user's input. Your output arrays MUST contain THE EXACT SAME NUMBER of items. If the user gave 4 projects, output exactly 4 projects. If they gave 2 experience entries, output exactly 2 experience entries. NEVER drop or merge items.
+- **CRITICAL**: Include ALL technical skills provided by the user, organized by the same categories. Do not omit any skill.
+- Bullet points per experience entry: 3-4 concise, ATS-keyword-rich bullets (keep them under 20 words each).
+- Bullet points per project entry: 2-3 concise bullets highlighting what it does, tech used, and impact.
+- Summary: 2-3 sentences maximum — tight and keyword-rich.
+- Do NOT invent new projects or experience that the user did not provide.
+- Do NOT truncate — if the resume is long, keep bullet points short, but preserve every array item.
 - Close ALL brackets and quotes.
 - Preserve the user's ACTUAL NAME and contact details from the input.
+- If the user has no experience, leave the experience array empty: [].
+- If the user has no certifications, leave the certifications array empty: [].
 
 {{
     "full_name": "First Last",
@@ -99,6 +102,7 @@ CRITICAL RULES:
 3. Match keywords from the job description naturally into experience and skills.
 4. Return ONLY valid JSON — no markdown fences, no explanation text.
 5. Preserve the user's actual data (name, contact, education, etc.) — do NOT invent personal details.
+6. MOST IMPORTANT: Output ALL the user's projects and experience — same count, no dropping.
 """
 
 
@@ -437,10 +441,11 @@ STRICT RULES:
 - Use GitHub project data to populate or ENRICH the "projects" section (use real repo names, real tech stacks).
 - Merge GitHub tech_stack into the skills section — do NOT invent technologies not present in resume or GitHub.
 - Rewrite and enhance experience bullets using strong action verbs that aggressively match JD keywords.
-- EVERY SINGLE experience entry from the user MUST be preserved. Do not drop any past jobs.
-- Include as many relevant projects as provided or found on GitHub (no strict limit).
-- Create EXACTLY 5-6 highly detailed bullet points per experience and project entry to maximize ATS score.
-- Summary: Generate a compelling 3-4 sentence summary tailored to the JD.
+- **EVERY SINGLE experience entry from the user MUST be preserved. Do not drop any past jobs.**
+- **Count the projects in the existing resume + GitHub. Include ALL of them. No project should be dropped.**
+- Bullet points per experience entry: 3-4 concise bullets (under 20 words each) — quality over quantity.
+- Bullet points per project entry: 2-3 concise bullets (under 20 words each).
+- Summary: 2-3 sentence summary tailored to the JD.
 - Return ONLY valid JSON. No markdown. No explanation.
 
 {{
