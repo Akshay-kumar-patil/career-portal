@@ -13,7 +13,7 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file_
 BASE_URL = os.environ.get("API_BASE_URL", "https://career-portal-cxgd.onrender.com").rstrip("/")
 
 # FIX #9: Define standard timeouts as constants so they're consistent everywhere
-_TIMEOUT_SHORT = 10    # for simple read/write operations
+_TIMEOUT_SHORT = 30    # for simple read/write operations (increased for Render-hosted backend)
 _TIMEOUT_AI = 300      # for AI generation calls (Render free-tier + LLM can take 3-5 min)
 
 
