@@ -151,7 +151,8 @@ def _merge_bullets(ai_bullets, fallback_bullets, max_count: int) -> list[str]:
 def _normalize_experience(ai_experience, fallback_experience) -> list[dict]:
     ai_experience = _as_list(ai_experience)
     fallback_experience = _as_list(fallback_experience)
-    total = len(fallback_experience) if fallback_experience else len(ai_experience)
+    # Prefer the longer list so no entries are dropped
+    total = max(len(fallback_experience), len(ai_experience)) if (fallback_experience or ai_experience) else 0
     result = []
 
     for idx in range(total):
@@ -162,6 +163,7 @@ def _normalize_experience(ai_experience, fallback_experience) -> list[dict]:
             "company": ai_item.get("company") or fallback_item.get("company") or "",
             "location": ai_item.get("location") or fallback_item.get("location") or "",
             "dates": ai_item.get("dates") or fallback_item.get("dates") or "",
+            # Keep up to 4 bullets — prompt targets 3-4, this just prevents runaway
             "bullets": _merge_bullets(ai_item.get("bullets"), fallback_item.get("bullets"), 4),
         }
         if item["title"] or item["company"] or item["bullets"]:
@@ -173,8 +175,8 @@ def _normalize_experience(ai_experience, fallback_experience) -> list[dict]:
 def _normalize_projects(ai_projects, fallback_projects, has_experience: bool) -> list[dict]:
     ai_projects = _as_list(ai_projects)
     fallback_projects = _as_list(fallback_projects)
-    total = len(fallback_projects) if fallback_projects else len(ai_projects)
-    max_bullets = 2 if has_experience else 3
+    # Preserve all projects: use whichever list is longer so nothing gets dropped
+    total = max(len(fallback_projects), len(ai_projects)) if (fallback_projects or ai_projects) else 0
     result = []
 
     for idx in range(total):
@@ -185,7 +187,8 @@ def _normalize_projects(ai_projects, fallback_projects, has_experience: bool) ->
             "tech_stack": ai_item.get("tech_stack") or fallback_item.get("tech_stack") or "",
             "live_url": ai_item.get("live_url") or fallback_item.get("live_url") or "",
             "repo_url": ai_item.get("repo_url") or fallback_item.get("repo_url") or "",
-            "bullets": _merge_bullets(ai_item.get("bullets"), fallback_item.get("bullets"), max_bullets),
+            # Keep up to 3 bullets per project — prompt targets 2-3
+            "bullets": _merge_bullets(ai_item.get("bullets"), fallback_item.get("bullets"), 3),
         }
         if item["name"] or item["bullets"]:
             result.append(item)
