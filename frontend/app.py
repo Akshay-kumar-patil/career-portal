@@ -293,25 +293,31 @@ def _render_generated_resume_display(key_suffix: str = ""):
         r = st.session_state["last_resume"]
         resume_id = r.get("id")
         ats_score = r.get("ats_score") or 0
+        kw_matched = r.get("keywords_matched", [])
+        kw_missing = r.get("keywords_missing", [])
+        no_jd_mode = not kw_matched and not kw_missing
 
         # ATS Score Display
         st.markdown("---")
-        st.markdown("### ATS Score")
+        st.markdown("### 🎯 ATS Score")
         score_color = "#4ECDC4" if ats_score >= 70 else ("#FFD93D" if ats_score >= 40 else "#FF6B6B")
         score_label = "Excellent" if ats_score >= 70 else ("Good" if ats_score >= 50 else ("Needs Work" if ats_score >= 30 else "Low"))
+        score_subtitle = "Resume Quality Score (no JD provided)" if no_jd_mode else "Keyword Match vs Job Description"
         st.markdown(f"""
         <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, #1A1F2E 0%, #252B3B 100%); border-radius: 16px; border: 1px solid rgba(108, 99, 255, 0.2); margin-bottom: 1rem;">
             <div style="font-size: 3.5rem; font-weight: 700; color: {score_color}; line-height: 1;">{ats_score}</div>
             <div style="font-size: 0.85rem; color: #8892B0; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px;">ATS Score</div>
             <div style="font-size: 1rem; font-weight: 600; color: {score_color}; margin-top: 4px;">{score_label}</div>
+            <div style="font-size: 0.8rem; color: #6B7280; margin-top: 4px;">{score_subtitle}</div>
             <div style="margin-top: 8px; background: #0E1117; border-radius: 8px; height: 8px; overflow: hidden;">
                 <div style="width: {ats_score}%; height: 100%; background: {score_color}; border-radius: 8px; transition: width 0.5s;"></div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        kw_matched = r.get("keywords_matched", [])
-        kw_missing = r.get("keywords_missing", [])
+        if no_jd_mode:
+            st.info("💡 **Tip:** Paste a Job Description in the 'Target Job Description' field to get a precise ATS keyword match score tailored to that role.")
+
         if kw_matched:
             with st.expander(f"Matched Keywords ({len(kw_matched)})"):
                 st.write(", ".join(kw_matched[:20]))
