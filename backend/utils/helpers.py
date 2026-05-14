@@ -159,7 +159,11 @@ def clean_ai_response(response: str) -> str:
 
 
 def calculate_keyword_match(resume_text: str, jd_text: str) -> dict:
-    """Calculate keyword overlap between resume and JD."""
+    """Calculate keyword overlap between resume and JD.
+    
+    When no JD is provided, computes a resume quality score based on
+    keyword richness (number of unique meaningful keywords in the resume).
+    """
     def extract_keywords(text: str) -> set:
         words = re.findall(r"\b[a-zA-Z+#]{3,}\b", text.lower())
         stop_words = {
@@ -174,10 +178,34 @@ def calculate_keyword_match(resume_text: str, jd_text: str) -> dict:
         return {w for w in words if w not in stop_words}
 
     resume_keywords = extract_keywords(resume_text)
-    jd_keywords = extract_keywords(jd_text)
+    jd_keywords = extract_keywords(jd_text) if jd_text and jd_text.strip() else set()
+
+    if not jd_keywords:
+        # No JD provided — score resume quality based on keyword richness.
+        # A well-rounded resume typically has 60–120 unique meaningful keywords.
+        # We map that range to a 50–95 score so it's meaningful but not perfect.
+        keyword_count = len(resume_keywords)
+        if keyword_count <= 0:
+            quality_score = 0.0
+        elif keyword_count < 20:
+            quality_score = round((keyword_count / 20) * 50, 1)   # 0–50
+        elif keyword_count < 60:
+            quality_score = round(50 + ((keyword_count - 20) / 40) * 30, 1)  # 50–80
+        elif keyword_count < 120:
+            quality_score = round(80 + ((keyword_count - 60) / 60) * 15, 1)  # 80–95
+        else:
+            quality_score = 95.0
+        return {
+            "matched": [],
+            "missing": [],
+            "score": quality_score,
+            "total_jd_keywords": 0,
+            "total_matched": 0,
+        }
+
     matched = resume_keywords & jd_keywords
     missing = jd_keywords - resume_keywords
-    score = (len(matched) / max(len(jd_keywords), 1)) * 100
+    score = (len(matched) / len(jd_keywords)) * 100
 
     return {
         "matched": sorted(list(matched))[:50],
